@@ -1,11 +1,11 @@
-# Urban Observatory Image Processing
+# Urban Observatory Image Processing & Tagging App
 
 ## Installing
 
 ```
-pip install git+https://github.com/CUSPcapstones/Detection-of-polluting-plumes-ejected-from-NYC-buildings_2018
+pip install git+https://github.com/bensteers/uoimdb.git # I'll push to pip eventually
 ```
-Right now, only Python 3 is supported. Sorry not sorry.
+Only Python 3 is supported. (sorry not sorry ¯\\_(ツ)_/¯).
 
 ## Quickstart
 
@@ -13,13 +13,13 @@ Right now, only Python 3 is supported. Sorry not sorry.
 ```
 uo-tagger
 ```
-Then just go to `http://localhost:5000/cal/` to get started
+Then just go to `http://localhost:5000/` or `http://localhost:5000/cal/` to get started
 
 #### Modifying the config options
 
 ```
-python -m uoimdb.config create
-emacs config.yaml
+python -m uoimdb.config create # copy them to your local directory
+sublime config.yaml # or your preferred editor, obvs
 ```
 
 #### Creating a gif
@@ -27,17 +27,17 @@ emacs config.yaml
 ```python
 import uoimdb as uo
 
-# instantiate the image database. could be slow depending on the number of images.
+# instantiate the image database. could be slow depending on the number of images as it needs to read the image timestamps.
 imdb = uo.uoimdb()
 print(imdb.df.shape)
 imdb.df.head()
 ```
 
 ```python
-# generate the background subtracted gif
+# generate background subtracted gif
 pipeline = (imdb.load_images(imdb.df.index[:20]) # load the first 20 images and create a pipeline
-				.bgsub2() # perform background subtraction across the series of images
-				.to_gif('my-background-subtracted-gif')) # save images as a gif
+		.bgsub2() # perform background subtraction across the series of images
+		.to_gif('my-background-subtracted-gif')) # save images as a gif
 Image(url=pipeline()) # gifs/my-background-subtracted-gif.gif
 ```
 
@@ -45,8 +45,8 @@ Image(url=pipeline()) # gifs/my-background-subtracted-gif.gif
 
 The options are defined in a `config.yaml` file. You can override configuration options by running `python -m uoimdb.config create` to get a copy of the config file to modify. If the config file exists in a location other than `./config.yaml` you can specify it like so: `imdb = uo.uoimdb(cfg='my-other-config.yaml')` (or `uo-tagger --cfg my-other-config.yaml` for the app). You can also pass individual config options into the uoimdb instantiator, so if you just want to change the image location, just do (for example): `uo.uoimdb(IMAGE_BASE_DIR='my-custom/image/path', IMAGE_FILE_PATTERN='*/*.png')` which will look for only `.png` images under `my-custom/image/path/*/*.png`.
 
-Some configurations of iterest may be: 
-```
+Some configurations of interest may be: 
+```yaml
 SAVE_EXT: '.jpg' # the default extension that pipelines save images as
 SAVE_DIR: './images' # the root directory where images and gifs are saved. images are saved under a name directory.
 IMAGE_BASE_DIR: 'images' # the common directory which all images are stored under
@@ -55,7 +55,7 @@ IMAGE_FILE_PATTERN: '*' # the glob file pattern for getting all images. relative
 APP_RUN: # the keyword arguments to pass to the Flask app.run(...)
   debug: True 
   port: 5000
-  ...
+  # ...
 	
 USERS: # TODO: don't store passwords in plain-text lol.
   username: password
