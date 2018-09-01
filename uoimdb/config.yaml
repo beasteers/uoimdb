@@ -54,6 +54,7 @@ BG: # background subtraction default parameters
   WINDOW: [7,7] # number of images on left/right
   BLUR_RADIUS: 5 # the blur radius after background subtraction
   SCALE: 10 # how much to scale bg subtraction
+  CMAP: bone # the colormap to use for background subtraction
 
 
 
