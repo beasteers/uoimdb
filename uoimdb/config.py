@@ -11,20 +11,6 @@ cfg = None
 loaded_configs = {}
 
 
-def get_config_text(filename=None, check_local=True):
-	'''Load the text content of a config file.
-	If filename exists, it will load that text content.
-	If filename was ommitted it will look for the default config file in the current working directory: config.yaml.
-	If that doesn't exist, it will get the default config file from the package directory.
-	'''
-	if filename is None: # get default config file (stored inside package)
-		filename = __DEFAULT_CONFIG__
-
-	if check_local and os.path.isfile(filename):
-		with open(filename, 'rt') as f:
-			return f.read()
-	else:
-		return pkg_resources.resource_string(__name__, filename)
 		
 
 def get_config(filename=None):
@@ -87,14 +73,21 @@ def get_config(filename=None):
 
 
 def main():
+	import json
 	import argparse
 	parser = argparse.ArgumentParser(description='')
-	parser.add_argument('action', help='create|...')
+	parser.add_argument('action', help='create: copy a config file locally|print: print base config|get: get config value...')
 	parser.add_argument('-f', '--file', default=None, help='the config file to use (input file to read)')
 	parser.add_argument('-o', '--out', default='config.yaml', help='the config file to write to (output file path)')
+	parser.add_argument('-k', '--key', default='', help='the keys to get. i.e. BG.WINDOW')
 	args = parser.parse_args()
 
-	if args.action == 'create':
+	print()
+
+	if args.action == 'print':
+		print(pkg_resources.resource_string(__name__, __BASE_CONFIG__).decode('utf-8'))
+
+	elif args.action == 'create':
 		text = pkg_resources.resource_string(__name__, __BASE_CONFIG__).decode('utf-8')
 		text = '\n'.join([
 			'# ' + line
@@ -105,6 +98,17 @@ def main():
 			print('Config file is empty.')
 		with open(args.out, 'w') as f:
 			f.write(text)
+
+	elif args.action == 'get':
+		cfg = get_config(args.file)
+
+		print('getting cfg.{}:'.format(args.key))
+
+		v = cfg
+		for k in args.key.split('.'):
+			v = v[k]
+		print(json.dumps(v, indent=4))
+
 
 if __name__ == '__main__':
 	main()

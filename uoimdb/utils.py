@@ -115,7 +115,7 @@ class easydict(dict):
         self.update(**d)
 
     def __setattr__(self, name, value):
-        return self.__setitem__(self, name, value)
+        return self.__setitem__(name, value)
     
     def __setitem__(self, name, value):
         return dict.__setitem__(self, name, self.__convert__(value))
