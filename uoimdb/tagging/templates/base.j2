@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{ title }}|{{ config.APP_TITLE }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/solid.css" integrity="sha384-Rw5qeepMFvJVEZdSo1nDQD5B6wX0m7c5Z/pLNvjkB14W6Yki1hKbSEQaX9ffUbWe" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/fontawesome.css" integrity="sha384-GVa9GOgVQgOk+TNYXu7S/InPTfSDTtBalSgkgqQ7sCik56N9ztlkoTr2f/T44oKV" crossorigin="anonymous">
+
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Montserrat">
+
+
+    <link rel="stylesheet" href="{{ url_for('.static', filename='css/main.css') }}">
+    <style>
+      [data-labelidx='-1'] {
+        border-color: {{ config.DEFAULT_COLOR }} !important;
+      }
+
+      {% for color in config.COLORS %}
+      [data-labelidx$='{{ loop.index0 }}'] {
+        border-color: {{ color }} !important;
+      }
+      {% endfor %}
+      {% if config.BACKGROUND_COLOR %}
+      body {
+        background-color: {{ config.BACKGROUND_COLOR }};
+      }
+      {% endif %}
+    </style>
+    {% block styles %}{% endblock %}
+  
+    {# we need jquery to send post requests. for some reason d3-fetch wasn't behaving, at least in chrome #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('.static', filename='js/d3-mods.js') }}"></script>
+  </head>
+  <body>
+    {% block nav %}{% endblock %}
+
+  	{% block content %}{% endblock %}
+
+	<script>
+    var config = {{ config|tojson }};
+		var BASE_URL = config.BASE_URL;
+    var CURRENT_USER = '{{ current_user }}';
+	</script>
+  	{% block scripts %}{% endblock %}
+  </body>
+</html>

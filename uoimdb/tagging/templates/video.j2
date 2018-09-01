@@ -1,0 +1,83 @@
+{% extends 'base.j2' %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('.static', filename='css/video.css') }}">
+  {% if config.VIDEO_BACKGROUND_COLOR %}
+    <style>
+      body {
+        background-color: {{ config.VIDEO_BACKGROUND_COLOR }};
+      }
+    </style>
+  {% endif %}
+{% endblock %}
+
+{% block nav %}
+{#  navbar-light bg-light #}
+  <nav class="navbar navbar-expand-lg fixed-bottom collapsed">
+    <div class='menu-actions'>
+      <i class="fas fa-sliders-h" id='expand-nav' title='More Options'></i>
+      <i class="fas fa-backward" id='rewind' title='Jump Backwards'></i>
+      <i class="fas fa-caret-left" id='step-back' title='Step Backwards'></i>
+      <i class="fas fa-play" id='play-pause' title='Play/Pause'></i>
+      <i class="fas fa-caret-right" id='step-forward' title='Step Forwards'></i>
+	  <i class="fas fa-forward" id='fastforward' title='Jump Forwards'></i>
+	  <i class="fas fa-image" id='toggle-original' title='Toggle Original'></i>
+      <span id="messages"></span>
+    </div>
+    
+    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
+
+    {% if prev_day %}
+      <a class="timeblock timebutton" href="{{ url_for('.video_day', date=prev_day) }}" title='Go to {{ prev_day }}'>&larr;</a>
+    {% endif %}
+  	{% if date %}
+      	<a class="timeblock timebutton" href="{{ url_for('.timeline_day', date=date) }}" title='View as grid'><i class="fas fa-th-large"></i></a>
+  	{% endif %}
+    {% if next_day %}
+      <a class="timeblock timebutton" href="{{ url_for('.video_day', date=next_day) }}" title='Go to {{ next_day }}'>&rarr;</a>
+    {% endif %}
+    
+
+    <div class="collapse navbar-collapse">
+      <form class="form-inline my-2 my-lg-0" id='controls'>
+        <label for="videoSpeed">Video Speed</label>
+        <input class='form-control mx-2' type="range" min="{{ config.SPEED.MIN }}" max="{{ config.SPEED.MAX }}" step="{{ config.SPEED.STEP }}" value='{{ config.SPEED.DEFAULT }}' style='direction: rtl' id="videoSpeed">
+        <label for="imgFilter">Image Filter</label>
+        <select class='form-control custom-select custom-select-sm mx-2' id="imgFilter"></select>
+        <button class="btn btn-success my-sm-0 mx-2" id='save' type='button'>Save</button>
+        
+        <span id="messages"></span>
+      </form>
+    </div>
+  </nav>
+{% endblock %}
+
+
+{% block content %}
+  <div id="tooltip"></div>
+  <div id="video-timeline"></div>
+	<div id="grid"></div>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+    var timeline_data = {{ timeline if timeline else []|tojson }};
+    var images = {{ images if images else []|tojson }};
+		var img_filters = {{ filters|tojson }};
+
+    // console.log(images);
+    console.log(timeline_data);
+	</script>
+	
+	<script src="{{ url_for('.static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('.static', filename='js/video.js') }}"></script>
+	<script>
+    if(timeline_data.length){
+      drawTimeline(timeline_data); 
+    }
+    else if(images.length){
+      updateImages(images);
+    }
+  </script>
+{% endblock %}
+

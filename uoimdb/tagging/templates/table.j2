@@ -1,0 +1,37 @@
+{% extends 'base.j2' %}
+
+{% block nav %}
+  <nav class="navbar navbar-expand-lg fixed-bottom navbar-light bg-light">
+    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
+    </button>
+
+    <div class="collapse navbar-collapse">
+      <a class="btn btn-outline-info my-sm-0" href="{{ url_for('.calendar') }}">View Calendar</a>
+    </div>
+  </nav>
+{% endblock %}
+
+
+{% block content %}
+	<table class="table">
+    <thead>
+      <tr>
+        {% for c in columns %}
+          <th scope="col">{{ c }}</th>
+        {% endfor %}
+      </tr>
+    </thead> 
+    <tbody>
+      {% for row in data %}
+        <tr>
+          {% for c in columns %}
+            <td>{{ row[c] }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
+
+{% block scripts %}{% endblock %}
+

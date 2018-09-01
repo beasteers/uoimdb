@@ -1,0 +1,158 @@
+
+
+######################
+# files/data storage
+######################
+
+DATA_LOCATION: data # where the imdb cache and labels are stored
+LABELS_FILE: labels.csv # csv of the gathered labels (from the app)
+IMAGE_BASE_DIR: images # the common directory which all images are stored under
+IMAGE_FILE_PATTERN: '*' # the glob file pattern for getting all images. relative to IMAGE_DIR
+
+# in case you want to keep the image location secret, you can store it in either one of these
+IMAGE_BASE_DIR_ENVVAR: UOIMAGES_DIR # an environmental variable
+IMAGE_BASE_DIR_LOC: UOIMAGES_DIR.txt # a text file
+
+
+# image output
+SAVE_EXT: .jpg # the default extension that pipelines save images as
+IMAGE_OUTPUT_DIR: output_images # the root directory where images and gifs are saved. images are saved under a name directory.
+
+# the image output file directory will look like:
+
+# IMAGE_OUTPUT_DIR/
+#  - my-exported-gif.gif          # imdb.pipeline().save_gif('my-exported-gif')
+#  - my-exported-images/          # imdb.pipeline().save_images('my-exported-images')
+#     - {imgs[0].idx}.{SAVE_EXT}
+#     - {imgs[1].idx}.{SAVE_EXT}
+#     - ...
+#  - my-other-gif.gif             # imdb.pipeline().save_gif('my-other-gif')
+#  - some-other-pipeline-images/  # imdb.pipeline().save_images('some-other-pipeline-images')
+#     - {imgs[0].idx}.{SAVE_EXT}
+#     - ...
+
+
+#############################
+# image processing defaults
+#############################
+
+MAX_PROCESSES: 10 # max number of processes to use when loading images using a multiprocessing Pool.
+CACHE_SIZE: 2000 # number of images that can be loaded at once. prevents memory overuse
+
+
+PIPELINE_INIT: True # initialize the pipeline by converting from bgr2rgb and resizing using the resize parameter below.
+
+RESCALE: False # the proportion to resize the images. For example, our images were ~(2k x 4k) which was way larger than required.
+
+CROP: # the default proportion to crop images
+  X1: 
+  X2: 
+  Y1: 0.12
+  Y2: 0.75
+
+BG: # background subtraction default parameters
+  WINDOW: [7,7] # number of images on left/right
+  BLUR_RADIUS: 5 # the blur radius after background subtraction
+  SCALE: 10 # how much to scale bg subtraction
+
+
+
+
+##############
+## App
+##############
+
+APP_RUN: # arguments to pass to app.run(...)
+  debug: True
+  port: 5000
+  threaded: True
+
+# backend
+
+BASE_URL: '/'
+
+
+APP_TITLE: UO Tagger # white label cuz why not!
+SECRET_KEY: 'xxxxxxxxxxxxx-shhh-xxxxxxxxxxxxxxxxxxxx' # flask app secret key
+USERS: 
+  admin: admin
+
+DATE_FORMAT: '%Y-%m-%d' # used for urls
+DATETIME_FORMAT: '%Y-%m-%d %H:%M:%S'
+
+
+# frontend
+
+LABELS:
+  - "plume"
+  - "cloud"
+  - "light"
+  - "shadow"
+  # - "continuous plume (start)"
+  # - "continuous plume (end)"
+  - "ambiguous"
+  - "test"
+
+# color order maps to label order. if more than 10 labels, the colors repeat themselves. 
+# I may fix this at some point to support > 10 colors. it was just a quick css solution.
+DEFAULT_COLOR: lightgrey
+COLORS: 
+  - darkturquoise
+  - crimson
+  - gold
+  - darkorchid
+  - rosybrown
+  - darkblue
+  - lavender
+  - olivedrab
+  - springgreen
+  - maroon
+
+CALENDAR_BACKGROUND_OVERLAY_COLOR: '#290e40' # the color overlay on top of the background image on the calendar page
+VIDEO_BACKGROUND_COLOR: '#14071f' # the color to use behind the images on the video page
+BACKGROUND_COLOR: '#14071f' # the color to use behind the images on the video page
+
+# not currently implemented
+FIXED_ASPECT_RATIO: False # what should the fixed box ratio be? 1 for square
+
+# grid tag
+GRID:
+  SIZES: [1, 2, 3, 4, 6, 12] # bootstrap grid sizes
+  DEFAULT_INDEX: 1 # for grid view
+
+# video
+PRELOAD_N_IMAGES: 10 # how many images to load ahead of the current image
+PRELOAD_N_PREV_IMAGES: 2 # how many images to load behind the current image (useful for speeding up step backwards)
+N_IMAGE_ELEMENTS: 2 # number of <img> elements to render at one time. can reduce latency
+
+# video control
+REWIND_STEP: -10 # the number of steps to take when clicking rewind
+FASTFORWARD_STEP: 10 # the number of steps to take when clicking fastforward
+BACK_STEP: -1 # number of frames to go when clicking back
+FORWARD_STEP: 1 # number of frames to go when clicking forward
+
+# the speed slider control
+SPEED: 
+  MIN: 100
+  MAX: 1000
+  STEP: 10
+  DEFAULT: 400
+
+# key bindings
+KEYS:
+  PLAY_PAUSE: 32 # space
+  STEP_BACK: 37 # left arrow
+  STEP_FORWARD: 39 # right arrow
+  SELECT_ALL: 65 # cmd-A || ctl-A, select/deselect boxes
+  DELETE_SELECTED: 8 # cmd-Delete || ctl-Delete, delete selected boxes
+  TOGGLE_ORIGINAL: 38 # up arrow, toggles between last chosen filter and original image
+
+  # this carries over boxes from the previous image to the current image
+  DRAW_GHOSTBOXES: 13 # enter
+
+  SAVE: 83 # cmd-S || ctl-S, save boxes to disk
+
+  
+
+
+

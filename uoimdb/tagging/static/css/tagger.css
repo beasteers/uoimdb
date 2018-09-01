@@ -1,0 +1,24 @@
+#timeline {
+	display: flex;
+	flex-wrap: wrap;
+	/*align-items: stretch;*/
+	justify-content: flex-start;
+}
+
+#timeline .timeblock {
+	flex-grow: 1;
+}
+
+.timefiller {
+	flex-grow: 100;
+	height: 1px;
+}
+
+
+.image-cell {
+	padding: 0.1em;
+}
+
+.image-cell title {
+	border-radius: 5px 5px 0 0;
+}

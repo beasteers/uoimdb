@@ -1,0 +1,53 @@
+body, .background {
+	background: url(/random-image) no-repeat center center fixed; 
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	background-color: #4f0d71;
+	background-blend-mode: multiply;
+
+	color: white;
+}
+
+.navbar {
+	padding: 1em 3em;
+}
+
+.day-cell {
+	padding-bottom: 0.6em;
+}
+
+.day-block {
+	min-height: 4em;
+	padding: 1em;
+	display: block;
+	position: relative;
+
+	text-align: center;
+	text-decoration: none;
+	
+	background: black;
+	color: white;
+	transition: background 0.4s ease-in-out, 
+				color 0.4s ease-in-out;
+}
+
+.day-block:hover {
+	text-decoration: none;
+	background: #ffffff1a;
+	color: white;
+}
+
+.day-block span.pct {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	left: 0;
+	background: black;
+	opacity: 0.4;
+}
+

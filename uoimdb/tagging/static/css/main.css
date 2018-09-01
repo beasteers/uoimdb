@@ -1,0 +1,321 @@
+body {
+	padding-bottom: 4em;
+	font-family: Montserrat, sans-serif;
+}
+
+
+/* Image cell - top level grid element */
+
+.image-cell {
+	padding: 0.3em 0;
+}
+
+.image-cell .title {
+	padding: 0.1em 0.8em;
+	font-size: 0.7em;
+	background: #000000c7;
+	color: #f9f9f9;
+}
+
+
+/* Image container - wrapper around image and bounding boxes */
+
+.image-container {
+	position: relative;
+}
+
+.image-container img {
+	width: 100%;
+	/*pointer-events: none;*/
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-o-user-select: none;
+	user-select: none;
+}
+
+/* Bounding boxes */
+
+.image-container .pt {
+	transition: opacity 0.4s ease-in-out,
+				background 0.4s ease-in-out;
+	width: 0px;
+	height: 0px;
+	border: 2px solid darkturquoise;
+	background: transparent;
+
+	position: absolute;
+	transform-origin: center;
+	box-sizing: content-box;
+	z-index: 100;
+	transition: transform 0.3s ease-in-out,
+				opacity 0.3s ease-in-out,
+				background 0.3s ease-in-out;
+}
+
+.image-container .pt:after {
+	content: '';
+	width: 7px;
+	height: 7px;
+	opacity: 0;
+	border-radius: 100%;
+	/*background: turquoise;*/
+	border: 1px solid white;
+	box-shadow: 0px 0px 20px 5px rgba(255,255,255,0.5);
+	
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transition: transform 0.4s ease-in-out,
+				opacity 0.4s ease-in-out;
+	transform: translate(-50%, -50%); /* position from the center of the point */
+	transform-origin: 100% 100%;
+}
+
+.image-container .pt:hover:after {
+	transform: scale(2);
+	opacity: 0.8;
+}
+.image-container .pt.selected:after {
+	transform: scale(2.1);
+	opacity: 0.6;
+}
+
+.image-container .pt.hover-out {
+	opacity: 0.5;
+	background: lightgray;
+}
+
+.image-container .pt.removed {
+	opacity: 0;
+	transform: scale(0.2);
+}
+
+.image-container .pt.ghost {
+	opacity: 0.6;
+}
+
+/* Bounding box label dropdown */
+
+.image-container .label-handle {
+	position: absolute;
+	top: 0;
+	left: 0;
+	border-radius: 100%;
+	background: darkgrey; /*white;*/
+	width: 10px;
+	height: 10px;
+	opacity: 0.6;
+	
+	transition: transform 0.4s ease-in-out,
+				opacity 0.4s ease-in-out;
+	transform: translate(-50%, -50%); /* position from the center of the point */
+	transform-origin: 100% 100%;
+}
+
+.image-container .label-handle:hover {
+	opacity: 0.9;
+}
+
+.label-handle .label-selection {
+	position: absolute;
+	bottom: 50%;
+	left: 50%;
+	padding: 0.5em;
+	opacity: 0;
+	transition: transform 0.4s ease-in-out,
+				opacity 0.4s ease-in-out;
+	transform-origin: 0% 100%;
+	transform: scale(0.1);
+}
+
+.image-container .pt:hover .label-selection,
+.image-container .pt.selected .label-selection {
+	transform: scale(0.6);
+	opacity: 0.5;
+}
+
+.image-container .pt .label-handle:hover .label-selection {
+	transform: scale(0.6);
+	opacity: 1;
+}
+
+/* Bounding box user label */
+
+.image-container .box-credit {
+	position: absolute;
+	top: 100%;
+	right: 0;
+	color: #777;
+	padding: 0 0.4em;
+	font-size: 0.5em;
+	transform: translate(2px, 2px);
+	transition: background 0.3s ease-in-out,
+				color 0.3s ease-in-out;
+}
+.image-container .box-credit:hover {
+	background: black;
+	color: white;
+}
+
+
+
+/* Timeblocks - the grey boxes used everywhere - e.g. the timeline on the top of the grid page  */
+
+.timeblock {
+	background: lightgrey;
+
+	font-size: 0.8em;
+	text-align: center;
+	vertical-align: middle;
+	text-decoration: none;
+
+	padding: 0.3em 0.4em 0.4em;
+	margin: 0.15em;
+
+	transition: background 0.4s ease-in-out;
+	cursor: pointer;
+}
+
+.timeblock:hover {
+	background: black;
+	color: white;
+	text-decoration: none;
+}
+
+.timeblock.selected {
+	background: black;
+	color: white;
+}
+
+.timeblock .badge {
+	pointer-events: none;
+	transition: background 0.4s ease-in-out, 
+				color 0.4s ease-in-out;
+}
+
+.timeblock.selected .badge {
+	background: white;
+	color: black;
+}
+
+
+
+
+/* The mini nav */
+
+.navbar .menu-actions {
+	position: absolute;
+	bottom: 100%;
+	background: #7171716b;
+	color: white;
+	padding: 0.2em 0.8em;
+	opacity: 0.6;
+	border-top-left-radius: 8px;
+	border-top-right-radius: 8px;
+	font-size: 1.3em;
+	-webkit-touch-callout: none; /* iOS Safari */
+	  -webkit-user-select: none; /* Safari */
+	   -khtml-user-select: none; /* Konqueror HTML */
+	     -moz-user-select: none; /* Firefox */
+	      -ms-user-select: none; /* Internet Explorer/Edge */
+	          user-select: none; /* Non-prefixed version, currently
+	                                supported by Chrome and Opera */
+}
+
+.navbar .menu-actions i {
+	cursor: pointer;
+}
+.navbar .menu-actions i:hover {
+	color: white;
+}
+
+.navbar.fixed-bottom {
+	transition: transform 0.4s ease-in-out;
+	background-color: #ffffffc7;
+	color: black;
+}
+
+.navbar.collapsed {
+	transform: translateY(100%);
+}
+
+.navbar a {
+	color: inherit;
+}
+
+
+
+/* Tooltip */
+
+
+#tooltip {
+	position: absolute;
+	opacity: 0;
+	background: black;
+	color: white;
+	padding: 0.4em;
+	transition: opacity 0.4s ease-in-out;
+	pointer-events: none;
+	z-index: 10000;
+	transform: translate(-50%, 8px);
+	transition: transform 0.3s ease-in-out;
+}
+#tooltip.flipped {
+	transform: translate(-50%, -100%);
+}
+
+#tooltip.visible {
+	opacity: 1;
+}
+
+
+/* Messages that pop up in the nav bar */
+
+#messages {
+	display: inline-block;
+	padding: 0 0.5em;
+	position: absolute;
+	left: 100%;
+	top: 0;
+	bottom: 0;
+}
+
+
+
+#controls input[type=range] {
+	direction: rtl;
+	max-width: 5em;
+	padding: 0;
+}
+
+.btn.btn-black {
+	background: black;
+	color: white;
+	border: 1px solid black;
+}
+
+.btn.btn-black:hover {
+	background: #bbbbbb30;
+}
+
+
+
+/* Login */
+
+.card-panel {
+	max-width: 800px;
+	margin: auto;
+	padding: 2em;
+}
+
+.solo-card {
+	margin-top: 5em;
+}
+
+
+
+
+
+
+

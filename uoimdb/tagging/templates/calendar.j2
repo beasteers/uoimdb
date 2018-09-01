@@ -1,0 +1,35 @@
+{% extends 'base.j2' %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('.static', filename='css/calendar.css') }}">
+  <style>
+    body {
+      background-color: {{ config.CALENDAR_BACKGROUND_OVERLAY_COLOR }};
+    }
+  </style>
+{% endblock %}
+
+{% block nav %}{% endblock %}
+
+{% block content %}
+  <nav class='navbar'>
+    <h1>{{ config.APP_TITLE }}</h1>
+  </nav>
+
+	<div id="grid"></div>
+
+  <div class="container">
+    <a class="btn btn-black mt-4" href="{{ url_for('.label_list') }}">View Collected Labels</a>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+		var calendar = {{ calendar|tojson }};
+    	console.log(calendar);
+	</script>
+	
+	<script src="{{ url_for('.static', filename='js/calendar.js') }}"></script>
+	<script></script>
+{% endblock %}
+
