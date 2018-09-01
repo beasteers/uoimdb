@@ -4,7 +4,8 @@ from .utils import easydict as edict
 import pkg_resources
 
 # default config location
-__DEFAULT_CONFIG__ = 'config.yaml'
+__BASE_CONFIG__ = 'config.yaml'
+__DEFAULT_CONFIG__ = __BASE_CONFIG__
 
 cfg = None
 loaded_configs = {}
@@ -41,8 +42,22 @@ def get_config(filename=None):
 	if filename in loaded_configs: 
 		return loaded_configs[filename]
 
-	# get config from file
-	cfg = edict(yaml.load(get_config_text(filename)))
+
+
+
+	# get base config
+	cfg = edict(**yaml.load(pkg_resources.resource_string(__name__, __BASE_CONFIG__)))
+
+	if filename is None: 
+		filename = __DEFAULT_CONFIG__
+
+	# get locally defined configuration options
+	if os.path.isfile(filename): 
+		with open(filename, 'rt') as f:
+			cfg.update(**yaml.load(f))
+
+
+
 
 	# get image base directory from secret location
 	if not cfg.IMAGE_BASE_DIR:
@@ -62,6 +77,7 @@ def get_config(filename=None):
 
 		cfg.IMAGE_DIR = base_dir
 
+
 	loaded_configs[filename] = cfg
 	return cfg
 
@@ -79,7 +95,11 @@ def main():
 	args = parser.parse_args()
 
 	if args.action == 'create':
-		text = get_config_text(args.file, check_local=False).decode('utf-8')
+		text = pkg_resources.resource_string(__name__, __BASE_CONFIG__).decode('utf-8')
+		text = '\n'.join([
+			'# ' + line
+			for line in text.split('\n')
+		])
 
 		if not text:
 			print('Config file is empty.')
