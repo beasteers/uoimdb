@@ -29,9 +29,9 @@ LABELS:
  - object 3
  
 COLORS:
- - #cc0000 # object 1 color
- - #00cc00 # object 2 color
- - #0000cc # object 3 color
+ - '#cc0000' # object 1 color
+ - '#00cc00' # object 2 color
+ - '#0000cc' # object 3 color
 ```
 
 You also have control over some of the default image processing parameters.
@@ -98,6 +98,7 @@ class MyTaggingApp(TaggingApp):
 
     def my_new_routes(self):
         @self.app.route('/hello/<name>')
+        def hello(name):
             with open('templates/my-template.j2', 'r') as f:
             	return jinja2.Template(f.read()).render(name=name, srcs=self.imdb.df.index[:10])
 
@@ -106,9 +107,9 @@ if __name__ == '__main__':
     app.run()
 ```
 
-And your template is just a jinja file at `templates/my-template.j2`. 
+And your template is just a jinja file at `./templates/my-template.j2`. 
 
-```jinja2
+```html
 Hello {{ name }}! Here's your first 10 images, in black and white. 
 
 {% for src in srcs %}
