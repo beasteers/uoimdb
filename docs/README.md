@@ -5,7 +5,7 @@ Hi! This package contains a web-based tagging application that can be used to ta
 The package also features the image processing pipelines used for performing the on-the-fly processing.
 
 This documentation contains information on:
-- [Using the App](Using The App.md)
+- [Using the App](using_the_app.md)
 - [Using uoimdb](Using uoimdb.ipynb)
-- [Customizing the App](Customizing The App.md)
-- [General Tools](Tools.md)
+- [Customizing the App](customizing_the_app.md)
+- [General Tools](tools.md)
