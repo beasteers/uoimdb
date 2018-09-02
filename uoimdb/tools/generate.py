@@ -6,6 +6,7 @@ import random
 import argparse
 from shutil import copyfile
 from datetime import timedelta, datetime
+import dateutil.parser as parser
 
 import imageio
 from .. import utils
@@ -97,10 +98,10 @@ if __name__ == '__main__':
 
 	# convert start/end times to datetime
 	if start and not isinstance(start, datetime):
-		start = datetime.strptime(start, '%d/%m/%Y')
+		start = parser.parse(start) #datetime.strptime(start, '%d/%m/%Y')
 
 	if end and not isinstance(end, datetime):
-		end = datetime.strptime(end, '%d/%m/%Y')
+		end = parser.parse(end) #datetime.strptime(end, '%d/%m/%Y')
 
 
 	# default values for start and end
