@@ -171,9 +171,9 @@ class uoimdb(object):
             self.pipeline_init(pipeline)
         return pipeline
         
-    def load_images(self, *a, raw=False, **kw):
+    def load_images(self, srcs, raw=False, **kw):
         '''Initializes the image pipeline with a list of files to load'''
-        pipeline = Pipeline(self).feed(*a, **kw)
+        pipeline = Pipeline(self).feed(srcs, **kw)
         if not raw and self.pipeline_init:
             self.pipeline_init(pipeline)
         return pipeline
@@ -233,7 +233,7 @@ class uoimdb(object):
                     close = isinstance(pool, int) # close if we created it
                     
                 if isinstance(pool, int): # pool is the number of processes
-                    pool = mp.Pool(min(pool, self.cfg.max_processes)) # mp.Pool(pool) 
+                    pool = mp.Pool(min(pool, self.cfg.MAX_PROCESSES)) # mp.Pool(pool) 
 
                 print('{} images total. {} missing. {} workers. {} cpus total.'.format(
                     len(srcs), len(missing_files), pool._processes, mp.cpu_count()))
@@ -389,7 +389,7 @@ class Pipeline(object):
         return self.imdb.cfg
 
             
-    def feed(self, imgs=None, srcs=None, src=None, window=None, **kw):
+    def feed(self, srcs=None, imgs=None, src=None, window=None, **kw):
         '''Define the pipeline input. Pass either srcs, src, or imgs.
         Arguments:
             srcs (iter of str): list of image srcs to use
@@ -508,7 +508,7 @@ class Pipeline(object):
                 x1, x2, y1, y2 = 0, 0, 1, 1
         '''
         if x1 is None and x2 is None and y1 is None and y2 is None:
-            x1, y1, x2, y2 = cfg.CROP.X1, cfg.CROP.X2, cfg.CROP.Y1, cfg.CROP.Y2
+            x1, y1, x2, y2 = self.cfg.CROP.X1, self.cfg.CROP.Y1, self.cfg.CROP.X2, self.cfg.CROP.Y2
 
         x1, y1, x2, y2 = x1 or 0, y1 or 0, x2 or 1, y2 or 1
         box_transform = partial(transform_boxes_crop, out_crop=((x1, y1), (x2, y2)))
