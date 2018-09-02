@@ -372,8 +372,9 @@ class Pipeline(object):
         self.pipeline = [] # the pipeline of generators
         self.box_transforms = [] # transforms to apply to bounding boxes
         self.imdb = imdb # stores all of the images
-        self._input = None # used to retrieve images
-        self.current_i = None
+        self.current_i = None # the current loop iteration
+        self._window = None # the number of frames to load around a singular src
+        self.clear_feed() # initialize variables
 
 
     @property
@@ -406,12 +407,13 @@ class Pipeline(object):
         self.i_fg = None
         self.src_fg = None
         self.srcs = []
+        window = window if window is not None else self._window
 
         if src is not None: # get images around src
+            self.src_fg = src
             if window is not None:
                 srcs = self.imdb.around_src(src, window=window) # get srcs around the fg image
                 self.i_fg = srcs.get_loc(src) # store the location of foreground
-                self.src_fg = src
             else:
                 srcs = (src,)
             
@@ -421,6 +423,25 @@ class Pipeline(object):
         elif srcs is not None: # load list of srcs
             self._input = self.imdb._load_images(srcs, out_srcs=self.srcs, **kw)
         return self 
+
+
+    def clear_feed(self):
+        '''Clear the feed variables'''
+        self.input_srcs = []
+        self.i_fg = None
+        self.src_fg = None
+        self.srcs = []
+        self._input = None
+
+
+    def use_window(self, window=None):
+        if window is None:
+            window = self.cfg.BG.WINDOW
+        self._window = window
+
+        if self.src_fg:
+            self.feed(self.src_fg)
+        return self
 
     
     def pipe(self, func, full=False, box_transform=None, singleton=False, *a, **kw):
@@ -500,6 +521,7 @@ class Pipeline(object):
             return pickle.load(f)
 
     '''Pipes'''
+
     
     def crop(self, x1=None, x2=None, y1=None, y2=None):
         '''Crop the images. 

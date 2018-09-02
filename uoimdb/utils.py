@@ -84,27 +84,59 @@ class metaArray(np.ndarray):
         return self
 
 
+# class easydict(dict):    
+#     '''Dict keys accessible via attributes (for config)'''
+#     __delattr__ = dict.__delitem__
+#     __setattr__ = dict.__setitem__
+
+#     def __init__(self, d=None):
+#         if d is not None:
+#             self.update(**d)
+            
+#     def __getattr__(self, name):
+#         self[name] = self.__convert__(self.get(name))
+#         return self[name]
+        
+#     def __convert__(self, value):
+#         if not isinstance(value, self.__class__):
+#             if isinstance(value, dict):
+#                 return self.__class__(value)
+#             elif isinstance(value, (list, tuple)):
+#                 return [self.__convert__(x) for x in value]
+#         return value
+
+
 class easydict(dict):    
     '''Dict keys accessible via attributes (for config)'''
     __delattr__ = dict.__delitem__
-    __setattr__ = dict.__setitem__
+    __getattr__ = dict.get
 
-    def __init__(self, d=None):
-        if d is not None:
-            self.update(**d)
-            
-    def __getattr__(self, name):
-        self[name] = self.__convert__(self.get(name))
-        return self[name]
+    def __init__(self, **d):
+        self.update(**d)
+
+    def __setattr__(self, name, value):
+        return self.__setitem__(name, value)
+    
+    def __setitem__(self, name, value):
+        return dict.__setitem__(self, name, self.__convert__(value))
+    
+    def update(self, **kw):
+        for k, v in kw.items():
+            if k in self and isinstance(self[k], dict) and isinstance(v, dict):
+                self[k].update(**v)
+            else:
+                self[k] = v
+        return self
         
     def __convert__(self, value):
         if not isinstance(value, self.__class__):
             if isinstance(value, dict):
-                return self.__class__(value)
+                return self.__class__(**value)
             elif isinstance(value, (list, tuple)):
                 return [self.__convert__(x) for x in value]
         return value
- 
+    
+
 
 
 '''

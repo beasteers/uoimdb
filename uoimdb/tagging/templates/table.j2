@@ -1,19 +1,19 @@
 {% extends 'base.j2' %}
 
 {% block nav %}
-  <nav class="navbar navbar-expand-lg fixed-bottom navbar-light bg-light">
+  <nav class="navbar navbar-expand-lg fixed-bottom">
     <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
     </button>
 
     <div class="collapse navbar-collapse">
-      <a class="btn btn-outline-info my-sm-0" href="{{ url_for('.calendar') }}">View Calendar</a>
+      <a class="btn btn-outline-dark my-sm-0" href="{{ url_for('.calendar') }}">To Calendar</a>
     </div>
   </nav>
 {% endblock %}
 
 
 {% block content %}
-	<table class="table">
+	<table class="table text-light">
     <thead>
       <tr>
         {% for c in columns %}

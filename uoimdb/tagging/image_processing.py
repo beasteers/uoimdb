@@ -6,19 +6,13 @@ class ImageProcessor(object):
 	def __init__(self, imdb):
 		self.imdb = imdb
 
-		# background subtraction filters
-		bg_filters = [
-			('Background Subtraction (mean)', imdb.pipeline().single_bgsub2(method='mean')),
-			('Background Subtraction (median)', imdb.pipeline().single_bgsub2(method='median')),
-			('Background Subtraction (min)', imdb.pipeline().single_bgsub2(method='min')),
-			('Background Subtraction (max)', imdb.pipeline().single_bgsub2(method='mean')),
-		]
-
-		# used to know which filters need surrounding images
-		self.bg_filter_names = [f[0] for f in bg_filters]
-
 		# all filters
-		self.filters = odict(bg_filters + [
+		self.filters = odict([
+			('Background Subtraction (mean)', imdb.pipeline().use_window().single_bgsub2(method='mean')),
+			('Background Subtraction (median)', imdb.pipeline().use_window().single_bgsub2(method='median')),
+			('Background Subtraction (min)', imdb.pipeline().use_window().single_bgsub2(method='min')),
+			('Background Subtraction (max)', imdb.pipeline().use_window().single_bgsub2(method='mean')),
+
 			('Original', imdb.pipeline()),
 			('Greyscale', imdb.pipeline().grey()),
 			('Edges', imdb.pipeline().grey().pipe(lambda im: cv2.Laplacian(im,cv2.CV_64F)).invert()),
@@ -36,13 +30,10 @@ class ImageProcessor(object):
 		if filter not in self.filters:
 			return None
 
-		# get surrounding images for background subtraction filters
-		window = self.imdb.cfg.BG.WINDOW if filter in self.bg_filter_names else None
-
 		# get image
-		img = self.filters[filter].feed(src=filename, window=window).first()
+		img = self.filters[filter].feed(src=filename).first()
 
-		# convert from bgr2rgb
+		# convert from rgb2bgr for opencv
 		if len(img.shape) > 2:
 			img = img[:,:,::-1]
 
