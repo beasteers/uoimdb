@@ -307,10 +307,11 @@ class TaggingApp(object):
 			return image_response(img)
 
 		@self.app.route('/random-image')
+		@self.app.route('/random-image/<filter>')
 		@flask_login.login_required
-		def random_image():
+		def random_image(filter='Original'):
 			src = self.imdb.df.sample(1).index[0]
-			img = self.imdb.get_image(src)
+			img = self.image_processor.filters[filter].feed(src=src).first()
 			return image_response(img)
 
 

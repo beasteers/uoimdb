@@ -244,6 +244,10 @@ body {
 	color: inherit;
 }
 
+#controls label {
+	font-size: 0.75em;
+}
+
 
 
 /* Tooltip */
@@ -314,7 +318,10 @@ body {
 }
 
 
-
+.bg-highlight {
+	background: #ffffff12;
+	color: white;
+}
 
 
 

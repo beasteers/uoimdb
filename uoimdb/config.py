@@ -40,7 +40,9 @@ def get_config(filename=None):
 	# get locally defined configuration options
 	if os.path.isfile(filename): 
 		with open(filename, 'rt') as f:
-			cfg.update(**yaml.load(f))
+			cfg_overrides = yaml.load(f)
+			if cfg_overrides:
+				cfg.update(**cfg_overrides)
 
 
 
@@ -78,17 +80,17 @@ def main():
 	parser = argparse.ArgumentParser(description='')
 	parser.add_argument('action', help='create: copy a config file locally|print: print base config|get: get config value...')
 	parser.add_argument('-f', '--file', default=None, help='the config file to use (input file to read)')
-	parser.add_argument('-o', '--out', default='config.yaml', help='the config file to write to (output file path)')
+	parser.add_argument('-o', '--out', default=__DEFAULT_CONFIG__, help='the config file to write to (output file path)')
 	parser.add_argument('-k', '--key', default='', help='the keys to get. i.e. BG.WINDOW')
 	args = parser.parse_args()
 
 	print()
 
 	if args.action == 'print':
-		print(pkg_resources.resource_string(__name__, __BASE_CONFIG__).decode('utf-8'))
+		print(pkg_resources.resource_string(__name__, args.file or __BASE_CONFIG__).decode('utf-8'))
 
 	elif args.action == 'create':
-		text = pkg_resources.resource_string(__name__, __BASE_CONFIG__).decode('utf-8')
+		text = pkg_resources.resource_string(__name__, args.file or __BASE_CONFIG__).decode('utf-8')
 		text = '\n'.join([
 			'# ' + line
 			for line in text.split('\n')
