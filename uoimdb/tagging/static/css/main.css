@@ -208,9 +208,8 @@ body {
 	position: absolute;
 	bottom: 100%;
 	background: #7171716b;
-	color: white;
+	color: #ffffff8f;
 	padding: 0.2em 0.8em;
-	opacity: 0.6;
 	border-top-left-radius: 8px;
 	border-top-right-radius: 8px;
 	font-size: 1.3em;
@@ -225,6 +224,7 @@ body {
 
 .navbar .menu-actions i {
 	cursor: pointer;
+	transition: color 0.2s ease-in-out;
 }
 .navbar .menu-actions i:hover {
 	color: white;

@@ -237,9 +237,10 @@ class TaggingApp(object):
 		@flask_login.login_required
 		def label_list():
 			'''Page that lists all images grouped by month/day'''
+			df = self.labels_df.reset_index()
 			return render_template('table.j2', title='Collected Annotations', 
-				columns=self.labels_df.columns, 
-				data=self.labels_df.to_dict(orient='records'))
+				columns=df.columns, 
+				data=df.to_dict(orient='records'))
 
 
 	def ajax_routes(self):
