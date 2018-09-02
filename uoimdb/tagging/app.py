@@ -35,8 +35,8 @@ class TaggingApp(object):
 		self.app.secret_key = cfg.SECRET_KEY
 		if cfg.TEMPLATE_DIRECTORIES:
 			app.jinja_loader = jinja2.ChoiceLoader([app.jinja_loader] + [
-			    jinja2.FileSystemLoader(path) 
-			    for path in cfg.TEMPLATE_DIRECTORIES
+				jinja2.FileSystemLoader(path) 
+				for path in cfg.TEMPLATE_DIRECTORIES
 			])
 		self.app.wsgi_app = PrefixMiddleware(self.app.wsgi_app, prefix=self.cfg.BASE_URL)
 
@@ -340,21 +340,21 @@ class TaggingApp(object):
 		return timeline
 
 
-    def get_calendar(self):
-        '''gets image stats first by month/year then by day'''
-        df = self.imdb.df.reset_index().set_index('date')
-        df = df.groupby(pd.Grouper(freq='M')
-        ).apply(lambda month: month.groupby(month.index.day
-            ).apply(lambda day: pd.Series(dict(
-                    image_count=len(day),
-                    label_count=sum(self.labels_df.src.isin(day.src)),
-                    date=day.index[0].strftime(self.cfg.DATE_FORMAT)
-                )).to_dict()
-            ).to_dict()
-        )
-        df = df[df.apply(len) > 0]
-        df.index = df.index.strftime('%Y/%m')
-        return df.to_dict()
+	def get_calendar(self):
+		'''gets image stats first by month/year then by day'''
+		df = self.imdb.df.reset_index().set_index('date')
+		df = df.groupby(pd.Grouper(freq='M')
+		).apply(lambda month: month.groupby(month.index.day
+			).apply(lambda day: pd.Series(dict(
+					image_count=len(day),
+					label_count=sum(self.labels_df.src.isin(day.src)),
+					date=day.index[0].strftime(self.cfg.DATE_FORMAT)
+				)).to_dict()
+			).to_dict()
+		)
+		df = df[df.apply(len) > 0]
+		df.index = df.index.strftime('%Y/%m')
+		return df.to_dict()
 
 
 	def get_timeline(self, date, freq=None, imgs_per_group=100):
@@ -414,13 +414,13 @@ def image_response(output_img, ext='.png'):
 
 
 class PrefixMiddleware(object):
-        def __init__(self, app, prefix=''):
-                self.app = app
-                self.prefix = prefix
+		def __init__(self, app, prefix=''):
+				self.app = app
+				self.prefix = prefix
 
-        def __call__(self, environ, start_response):
-                environ['SCRIPT_NAME'] = self.prefix
-                return self.app(environ, start_response)
+		def __call__(self, environ, start_response):
+				environ['SCRIPT_NAME'] = self.prefix
+				return self.app(environ, start_response)
 
 
 
