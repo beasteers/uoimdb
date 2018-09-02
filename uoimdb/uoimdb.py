@@ -916,7 +916,7 @@ def consecutive_bgsub(frames, window):
         buffer.append(new_frame) # store new image
         yield np.abs(buffer[i] - buffer.mean_)
     
-    for i in range(center+1, center): # we've hit the right edge, finish up. i == center -> window_size - 1
+    for i in range(center+1, center + window_right): # we've hit the right edge, finish up. i == center -> window_size - 1
         yield np.abs(buffer[i] - buffer.mean_)
 
 
