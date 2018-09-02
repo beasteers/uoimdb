@@ -905,18 +905,19 @@ def disjoint_bgsub(img, imgs, method='mean'):
     
 def consecutive_bgsub(frames, window):
     '''Performs an optimized version of background subtraction where it is assumed that the images are consecutive.'''
-    center, window_right = window
+    center, window_right = window # _____,_,_____
+    center += 1 # shift one to include the center frame. 
     frames = (frame.astype(float) for frame in frames) # convert to float or everything goes to shit *-*
     buffer = utils.npBuffer([frame for _, frame in zip(range(center + window_right), frames)]) # initialize the buffer
     
-    for i in range(center+1): # start at left edge, i -> center
+    for i in range(center): # start at left edge, i = 0 -> center
         yield np.abs(buffer[i] - buffer.mean_)
     
     for new_frame in frames: # i == center
         buffer.append(new_frame) # store new image
         yield np.abs(buffer[i] - buffer.mean_)
     
-    for i in range(center+1, center + window_right): # we've hit the right edge, finish up. i == center -> window_size - 1
+    for i in range(center, center + window_right): # we've hit the right edge, finish up. i = center -> window_size - 1
         yield np.abs(buffer[i] - buffer.mean_)
 
 
