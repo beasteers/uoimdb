@@ -340,18 +340,21 @@ class TaggingApp(object):
 		return timeline
 
 
-	def get_calendar(self):
-		'''gets image stats first by month/year then by day'''
-		df = self.imdb.df.reset_index().set_index('date')
-		return df.groupby(df.index.strftime('%Y/%m')
-		).apply(lambda month: month.groupby(month.index.day
-			).apply(lambda day: pd.Series(dict(
-					image_count=len(day),
-					label_count=len(day.merge(self.labels_df, on='src')),
-					date=day.index[0].strftime(self.cfg.DATE_FORMAT)
-				)).to_dict()
-			).to_dict()
-		).to_dict()
+    def get_calendar(self):
+        '''gets image stats first by month/year then by day'''
+        df = self.imdb.df.reset_index().set_index('date')
+        df = df.groupby(pd.Grouper(freq='M')
+        ).apply(lambda month: month.groupby(month.index.day
+            ).apply(lambda day: pd.Series(dict(
+                    image_count=len(day),
+                    label_count=sum(self.labels_df.src.isin(day.src)),
+                    date=day.index[0].strftime(self.cfg.DATE_FORMAT)
+                )).to_dict()
+            ).to_dict()
+        )
+        df = df[df.apply(len) > 0]
+        df.index = df.index.strftime('%Y/%m')
+        return df.to_dict()
 
 
 	def get_timeline(self, date, freq=None, imgs_per_group=100):
@@ -364,7 +367,7 @@ class TaggingApp(object):
 		).apply(lambda imgs: pd.Series(dict(
 			image_count=len(imgs),
 			#boxes=imgs.merge(labels_df, on='src').to_dict(orient='records'),
-			label_count=len(imgs.merge(self.labels_df, on='src')),
+			label_count=sum(self.labels_df.src.isin(imgs.src)),
 			srcs=imgs['src'].tolist()
 		))).reset_index()
 

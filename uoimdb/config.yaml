@@ -109,7 +109,7 @@ COLORS:
   - springgreen
   - maroon
 
-CALENDAR_BACKGROUND_OVERLAY_COLOR: '#290e40' # the color overlay on top of the background image on the calendar page
+CALENDAR_BACKGROUND_OVERLAY_COLOR: '#290e40d4' # the color overlay on top of the background image on the calendar page
 VIDEO_BACKGROUND_COLOR: '#14071f' # the color to use behind the images on the video page
 BACKGROUND_COLOR: '#14071f' # the color to use behind the images on the video page
 
