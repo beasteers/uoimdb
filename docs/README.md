@@ -6,6 +6,6 @@ The package also features the image processing pipelines used for performing the
 
 This documentation contains information on:
 - [Using the App](using_the_app.md)
-- [Using uoimdb](Using uoimdb.ipynb)
+- [Using uoimdb](uoimdb.ipynb)
 - [Customizing the App](customizing_the_app.md)
 - [General Tools](tools.md)
