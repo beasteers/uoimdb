@@ -181,7 +181,13 @@ class uoimdb(object):
     def feed_images(self, imgs, **kw):
         '''Initializes the image pipeline with a list of already loaded images'''
         return Pipeline(self).feed(imgs=imgs, **kw)
-    
+  
+    def load_image(self, src, raw=False, **kw):
+        '''Initialize the image pipeline with a single image'''
+        pipeline = Pipeline(self).feed(src=src, **kw)
+        if not raw and self.pipeline_init:
+            self.pipeline_init(pipeline)
+        return pipeline
 
 
     '''Image retrieval'''
@@ -435,6 +441,7 @@ class Pipeline(object):
 
 
     def use_window(self, window=None):
+        '''set the window to be used when a single src is passed in.'''
         if window is None:
             window = self.cfg.BG.WINDOW
         self._window = window
@@ -501,11 +508,12 @@ class Pipeline(object):
         return list(self)
 
 
-    def clone(self):
-        pipeline = Pipeline(self.imdb)
-        pipeline.pipeline = [f for f in self.pipeline]
-        pipeline.box_transforms = [f for f in self.box_transforms]
-        return pipeline
+    #def clone(self):
+    #    '''Copy the image pipeline. Warning: this doesn't change the references to the pipeline in the pipe closures, so basically this won't work.'''
+    #    pipeline = Pipeline(self.imdb)
+    #    pipeline.pipeline = [f for f in self.pipeline]
+    #    pipeline.box_transforms = [f for f in self.box_transforms]
+    #    return pipeline
 
 
     def save(self, path):
@@ -522,7 +530,13 @@ class Pipeline(object):
 
     '''Pipes'''
 
-    
+    def init(self):
+        '''Run the pipeline initialization function if it exists.'''
+        if self.imdb.pipeline_init:
+            self.imdb.pipeline_init(self)
+        return self
+
+   
     def crop(self, x1=None, x2=None, y1=None, y2=None):
         '''Crop the images. 
         Arguments:
@@ -613,7 +627,7 @@ class Pipeline(object):
         return self.pipe(consecutive_bgsub, full=True, window=window)
     
 
-    def bgsub2(self, window=None):
+    def bgsub2(self, window=None, cmap=None):
         '''Performs fancy background subtraction. Includes the full pipeline:
             convert to greyscale
             blur for translation invariance
@@ -632,6 +646,8 @@ class Pipeline(object):
         '''
         if window is None:
             window = self.cfg.BG.WINDOW
+        if cmap is None:
+            cmap = self.cfg.BG.CMAP
 
         (self.grey()
              .blur()
@@ -640,7 +656,7 @@ class Pipeline(object):
              .scale()
              .clip()
              .invert()
-             .cmap(self.cfg.BG.CMAP)
+             .cmap(cmap)
              .astype('uint8'))
         return self
     
@@ -794,7 +810,7 @@ class Pipeline(object):
                 return im
         return self.attach_meta().pipe(f, **kw)
 
-    def attach_meta(self):
+    def attach_meta(self, **kw):
         '''Bind the image src and other meta to the numpy array. Needs to be called intermittenly because 
             the meta would be lost if a copy was returned by any pipes.
         Returns:
@@ -804,10 +820,10 @@ class Pipeline(object):
             for i, im in enumerate(ims):
                 src = self.srcs[i]
                 idx = self.imdb.src_to_idx(src)
-                yield im.view(utils.metaArray).set_meta(i=i, src=src, idx=idx)
+                yield im.view(utils.metaArray).set_meta(i=i, src=src, idx=idx, **kw)
         return self.pipe(f, full=True)
 
-    def progress(self, every=10):
+    def progress(self, every=1):
         '''Prints the iteration number.
         Arguments:
             every (int): after how many iterations to update. e.g. print out every=100 iterations
@@ -917,23 +933,25 @@ def consecutive_bgsub(frames, window):
         buffer.append(new_frame) # store new image
         yield np.abs(buffer[i] - buffer.mean_)
     
-    for i in range(center, center + window_right): # we've hit the right edge, finish up. i = center -> window_size - 1
+    for i in range(center, len(buffer)): # we've hit the right edge, finish up. i = center -> window_size - 1
         yield np.abs(buffer[i] - buffer.mean_)
 
 
 def draw_dets_cv(im, boxes=None, text_color=(0,0,0)):
     H, W = im.shape[:2]
+    im = np.array(im)
     for id, box in boxes.iterrows():
-        pt1 = int(box.x1*W), int(box.y1*H)
-        pt2 = int(box.x2*W), int(box.y2*H)
+        xs = sorted((int(box.x1*W), int(box.x2*W)))
+        ys = sorted((int(box.y1*H), int(box.y2*H)))
+        pt1, pt2 = zip(xs, ys)
         # print(pt1, pt2)
         if 'score' in box:
             label = '{} {:.3f}'.format(box.label, box.score)
         else:
             label = box.label
 
-        cv2.rectangle(im, pt1, pt2, (0,0,255), 1)
-        cv2.putText(im, label, pt1, cv2.FONT_HERSHEY_DUPLEX, 0.3, text_color)
+        cv2.rectangle(im, pt1, pt2, (0,0,255), 2)
+        cv2.putText(im, label, pt1, cv2.FONT_HERSHEY_DUPLEX, 0.8, text_color, 2)
     return im
 
 
