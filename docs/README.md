@@ -4,6 +4,11 @@ Hi! This package contains a web-based tagging application that can be used to ta
 
 The package also features the image processing pipelines used for performing the on-the-fly processing.
 
+To install: 
+```
+pip install git+https://github.com/bensteers/uoimdb.git # only python 3
+```
+
 This documentation contains information on:
 - [Using the App](using_the_app.md)
 - [Using uoimdb Pipelines](uoimdb.ipynb)
