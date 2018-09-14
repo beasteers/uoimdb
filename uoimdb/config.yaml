@@ -68,18 +68,29 @@ APP_RUN: # arguments to pass to app.run(...)
   port: 5000
   threaded: True
 
+SECRET_KEY: 'xxxxxxxxxxxxx-shhh-xxxxxxxxxxxxxxxxxxxx' # flask app secret key
+USERS: 
+  admin: admin
+
+
+
+# everything above this line is private and will not be visible via the front end
+---
+# everything below is used for the front end and will be visible to all app users. NO SENSITIVE DATA BELOW!!
+# without this doc divider, all data will be visible to the front end which is not recommended.
+
+
+
+
 # backend
 
 BASE_URL: '/'
 
 
 APP_TITLE: UO Tagger # white label cuz why not!
-SECRET_KEY: 'xxxxxxxxxxxxx-shhh-xxxxxxxxxxxxxxxxxxxx' # flask app secret key
-USERS: 
-  admin: admin
 
 DATE_FORMAT: '%Y-%m-%d' # used for urls
-DATETIME_FORMAT: '%Y-%m-%d %H:%M:%S'
+DATETIME_FORMAT: '%Y-%m-%d %H:%M:%S' 
 
 
 # frontend
@@ -94,8 +105,7 @@ LABELS:
   - "ambiguous"
   - "test"
 
-# color order maps to label order. if more than 10 labels, the colors repeat themselves. 
-# I may fix this at some point to support > 10 colors. it was just a quick css solution.
+# color order maps to label order. 
 DEFAULT_COLOR: lightgrey
 COLORS: 
   - darkturquoise
@@ -114,7 +124,7 @@ VIDEO_BACKGROUND_COLOR: '#14071f' # the color to use behind the images on the vi
 BACKGROUND_COLOR: '#14071f' # the color to use behind the images on the video page
 
 # not currently implemented
-FIXED_ASPECT_RATIO: False # what should the fixed box ratio be? 1 for square
+FIXED_ASPECT_RATIO: False # what should the fixed box ratio be? 1 for square. False for no constraints on aspect ratio.
 
 # grid tag
 GRID:
