@@ -28,7 +28,8 @@ def load_config(f, cfg=None):
 	# config that goes to frontend. If it exists, then extend rather than replace.
 	frontend = cfg_docs[1] if len(cfg_docs) > 1 else cfg_docs[0]
 	cfg.frontend = cfg.frontend or edict()
-	cfg.frontend.update(**frontend)
+	if frontend:
+		cfg.frontend.update(**frontend)
 	
 	return cfg
 
