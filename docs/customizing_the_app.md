@@ -38,6 +38,8 @@ You also have control over some of the default image processing parameters.
 
 If the config file exists in a location other than `./config.yaml` you can specify it like so: `imdb = uo.uoimdb(cfg='my-other-config.yaml')` (or `uo-tagger --cfg my-other-config.yaml` for the app). You can also pass individual config options into the uoimdb instantiator, so if you just want to change the image location, just do (for example): `uo.uoimdb(IMAGE_BASE_DIR='my-custom/image/path', IMAGE_FILE_PATTERN='*/*.png')` which will look for only `.png` images under `my-custom/image/path/*/*.png`.
 
+For security purposes, the YAML document is divided into multiple documents. The second section will contain any information that is needed in the frontend. All of this will be accessible by the user so nothing sensitive should be found here. All sensitive information should be found in the first section. (further sections could be added and used for other special purposes if needed, but I don't see a relevant need for that at the moment.) The sections are defined by YAML document markers `---`. If this is not present in the document, then the entire configuration file will be sent to the frontend and user authentication information will be displayed plainly. Don't do this unless the app is purely for personal use or you don't care about authentication at all.
+
 ## Custom Image Processor
 
 Beyond the config file, you can also interface with the app directly if you want to implement custom functionality.
