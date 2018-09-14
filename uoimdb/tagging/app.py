@@ -82,7 +82,7 @@ class TaggingApp(object):
 
 
 	def inject_globals(self):
-		return dict(config=self.cfg,
+		return dict(config=self.cfg.frontend,
 			current_user=flask_login.current_user.get_id(), 
 			filters=list(self.image_processor.filters.keys()))	
 
