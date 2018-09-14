@@ -11,7 +11,24 @@ cfg = None
 loaded_configs = {}
 
 
+def load_config(f, cfg=None):
+	'''Load a multisection config file. Use the second section as the front-end data. Any other section is for private settings.
+	Arguments:
+		f (text/file): the yaml config file
+		cfg (easydict or None): the existing config obj to add to, if exists.
+	'''
+	if cfg is None:
+		cfg = edict()
 		
+	cfg_docs = list(yaml.load_all(f))
+	for doc in cfg_docs:
+		if doc:
+			cfg.update(**doc)
+	
+	# config that goes to frontend
+	cfg.frontend = cfg_docs[1] if len(cfg_docs) > 1 else cfg_docs[0]
+	
+	return cfg
 
 def get_config(filename=None):
 	global cfg
@@ -29,10 +46,9 @@ def get_config(filename=None):
 		return loaded_configs[filename]
 
 
-
-
 	# get base config
-	cfg = edict(**yaml.load(pkg_resources.resource_string(__name__, __BASE_CONFIG__)))
+	cfg = load_config(pkg_resources.resource_string(__name__, __BASE_CONFIG__))
+	
 
 	if filename is None: 
 		filename = __DEFAULT_CONFIG__
@@ -40,14 +56,10 @@ def get_config(filename=None):
 	# get locally defined configuration options
 	if os.path.isfile(filename): 
 		with open(filename, 'rt') as f:
-			cfg_overrides = yaml.load(f)
-			if cfg_overrides:
-				cfg.update(**cfg_overrides)
+			cfg = load_config(f, cfg)
 
 
-
-
-	# get image base directory from secret location
+	# get image base directory from secret location. was requested for UO images.
 	if not cfg.IMAGE_BASE_DIR:
 		image_dir = None
 
@@ -92,7 +104,7 @@ def main():
 	elif args.action == 'create':
 		text = pkg_resources.resource_string(__name__, args.file or __BASE_CONFIG__).decode('utf-8')
 		text = '\n'.join([
-			'# ' + line
+			'# ' + line if not line.startswith('---') else line
 			for line in text.split('\n')
 		])
 
