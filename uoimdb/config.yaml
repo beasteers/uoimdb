@@ -47,8 +47,8 @@ RESCALE: False # the proportion to resize the images. For example, our images we
 CROP: # the default proportion to crop images
   X1: 
   X2: 
-  Y1: 0.12
-  Y2: 0.75
+  Y1: 
+  Y2: 
 
 BG: # background subtraction default parameters
   WINDOW: [7,7] # number of images on left/right
