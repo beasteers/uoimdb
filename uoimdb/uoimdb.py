@@ -7,6 +7,7 @@ import dill as pickle
 from datetime import datetime
 from collections import deque
 from functools import partial, reduce
+from itertools import chain
 
 import imageio
 import numpy as np
@@ -381,6 +382,7 @@ class Pipeline(object):
         self.current_i = None # the current loop iteration
         self._window = None # the number of frames to load around a singular src
         self.clear_feed() # initialize variables
+        self._iter # stores the pipeline iterator
 
 
     @property
@@ -499,9 +501,20 @@ class Pipeline(object):
             yield im
         self.current_i = None
 
+    def __next__(self):
+        '''Now pipelines are officially iterators.'''
+        if not self._iter:
+            self._iter = iter(self)
+        return next(self._iter)
+
     def first(self):
         '''Get the first element. Useful for single element iterators'''
-        return next(iter(self))
+        return next(self)
+
+    def borrow_first(self):
+        a = self.first()
+        self._iter = chain((a,), self._iter) # tack it back onto the beginning
+        return a
 
     def tolist(self):
         '''Convert iterator to list'''
