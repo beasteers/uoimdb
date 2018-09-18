@@ -382,7 +382,7 @@ class Pipeline(object):
         self.current_i = None # the current loop iteration
         self._window = None # the number of frames to load around a singular src
         self.clear_feed() # initialize variables
-        self._iter # stores the pipeline iterator
+        self._iter = None # stores the pipeline iterator
 
 
     @property
