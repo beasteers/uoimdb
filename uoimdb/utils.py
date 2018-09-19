@@ -16,6 +16,36 @@ import traceback
 
 
 
+# Just remembered this can be handled by dataset.py..
+# def calc_label_properties(df, corners=False, origin=False, dur=False, refresh=False):
+#     '''Calculate some extra label properties that are needed elsewhere'''
+#     corners = corners and (not 'x1' in df or
+#                            not 'y1' in df or 
+#                            not 'x2' in df or 
+#                            not 'y2' in df or refresh)
+#     dur = dur and (not 'dur' in df or refresh)
+#     origin = (origin or dur) and (not 'origin_id' in df or refresh)
+
+#     if corners:
+#         df.loc[:,'x1'] = (df.x - df.w/2)
+#         df.loc[:,'y1'] = (df.y - df.h/2)
+#         df.loc[:,'x2'] = (df.x + df.w/2)
+#         df.loc[:,'y2'] = (df.y + df.h/2)
+
+#     if origin or dur:
+#         if not 'origin_id' in df or refresh:
+#             only_plumes = df.label == 'plume'
+#             df.loc[:,'origin_id'] = None
+#             df.loc[only_plumes] = df[only_plumes].apply(get_origin_id, axis=1, df=df[only_plumes])
+
+#     if dur and (not 'dur' in df or refresh):
+#         plume_dur = df[only_plumes].groupby('origin_id').src.count()
+#         df.loc[only_plumes, 'plume_dur'] = plume_dur[df[only_plumes].origin_id].values
+
+#     return df
+
+
+
 def null_image(im):
     return im is None or type(im) == float and np.isnan(im) # check the numerous ways images could be bad
 
@@ -175,7 +205,12 @@ def parse_freq(freq):
         
         
         
-        
+  
+
+def ensure_dir(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
         
 def cache_result(file, refresh=False, verbose=False):
     '''Cache the result of a class method to a file
@@ -210,7 +245,7 @@ def cache_result(file, refresh=False, verbose=False):
             cache_file = file(*a, **kw) if callable(file) else file
             
             # check if cache is available
-            if not _refresh_ and os.path.exists(cache_file):
+            if not _refresh_ and os.path.isfile(cache_file):
                 with open(cache_file, 'rb') as fid:
                     data = pickle.load(fid)
                 if _verbose_:
@@ -219,6 +254,7 @@ def cache_result(file, refresh=False, verbose=False):
             # cache is not available, compute value
             data = func(*a, **kw)
             # save value to cache
+            ensure_dir(os.path.dirname(cache_file))
             with open(cache_file, 'wb') as fid:
                 pickle.dump(data, fid, pickle.HIGHEST_PROTOCOL)
             if _verbose_:
@@ -231,34 +267,34 @@ def cache_result(file, refresh=False, verbose=False):
         
         
         
-def dict2xml(data, root='root', key=None):
-    '''Convert dict to xml tree.
-    Arguments:
-        data (dict): the data to convert
-        root (str or xml element): the root element (or element name) to data to.
-        key (for internal use): tag name. used for recursion.
+# def dict2xml(data, root='root', key=None):
+#     '''Convert dict to xml tree.
+#     Arguments:
+#         data (dict): the data to convert
+#         root (str or xml element): the root element (or element name) to data to.
+#         key (for internal use): tag name. used for recursion.
     
-    For multiple entries with the same name, pass as {'tag' ['hi', 'hello']}
-    Renders as:
-        <tag>hi</tag>
-        <tag>hello</tag>
-    '''
-    if isinstance(root, str):
-        root = ET.Element(root)
+#     For multiple entries with the same name, pass as {'tag' ['hi', 'hello']}
+#     Renders as:
+#         <tag>hi</tag>
+#         <tag>hello</tag>
+#     '''
+#     if isinstance(root, str):
+#         root = ET.Element(root)
         
-    if key is not None:
-        root = ET.SubElement(root, key)
+#     if key is not None:
+#         root = ET.SubElement(root, key)
     
-    if isinstance(data, dict):
-        for key, val in data.items():
-            if isinstance(val, list):
-                for v in val:
-                    dict2xml(v, root=root, key=key)
-            else:
-                dict2xml(val, root=root, key=key)
-    elif data is not None:
-        root.text = str(data)
-    return root
+#     if isinstance(data, dict):
+#         for key, val in data.items():
+#             if isinstance(val, list):
+#                 for v in val:
+#                     dict2xml(v, root=root, key=key)
+#             else:
+#                 dict2xml(val, root=root, key=key)
+#     elif data is not None:
+#         root.text = str(data)
+#     return root
 
 
 

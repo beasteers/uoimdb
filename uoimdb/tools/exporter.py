@@ -7,16 +7,12 @@ import pandas as pd
 
 import xml.etree.ElementTree as ET
 from xml.dom.minidom import parseString
-from sklearn.model_selection import train_test_split
 
 # import uoimages as uo
-from . import uoimdb as uo
-from . import utils
-from .utils import progress, timer
-
-# set default rescale to half size
-uo.RESCALE = 0.5
-
+from .. import uoimdb
+from .. import utils
+from ..utils import progress, timer, ensure_dir
+from ..dataset import get_ground_truth
 
 
 
@@ -28,7 +24,7 @@ def filename2index(filename):
 
 
 
-def generate_annotation(src, plumes, size, date=None, bgsub_params=None, crop=None):
+def generate_annotation(src, labels, size, date=None, bgsub_params=None, crop=None):
     '''Build the annotation xml file structure
     Arguments:
         src (str): should be the relative path to image
@@ -41,7 +37,7 @@ def generate_annotation(src, plumes, size, date=None, bgsub_params=None, crop=No
         (height, width), depth = size, 3
 
     return {
-        'folder': 'uoplumes',
+        'folder': 'uoimdb',
         'filename': filename2index(src), 
         'timestamp': date,
         'source': {
@@ -56,27 +52,27 @@ def generate_annotation(src, plumes, size, date=None, bgsub_params=None, crop=No
             'height': height,
             'depth': depth,
         },
-        'bgsub_params': bgsub_params,
+        'image_generation_params': bgsub_params,
 #           'segmented': 0,
         'object': [
             {
-                'name': plume.label,
+                'name': label.label,
                 'pose': '',
                 'truncated': 0,
                 'difficult': 0, # either include this or set config['use_diff'] = True
                 'bndbox': {
-                    'xmin': max(1, int(max(plume.x1, 0)*width)), # int(max(plume.x - plume.w / 2, 0) * width),
-                    'xmax': max(1, int(min(plume.x2, 1)*width)), # int(min(plume.x + plume.w / 2, 1) * width),
-                    'ymin': max(1, int(max(plume.y1, 0)*height)), # int(max(plume.y - plume.h / 2, 0) * height),
-                    'ymax': max(1, int(min(plume.y2, 1)*height)), # int(min(plume.y + plume.h / 2, 1) * height),
+                    'xmin': max(1, int(max(label.x1, 0)*width)), # int(max(label.x - label.w / 2, 0) * width),
+                    'xmax': max(1, int(min(label.x2, 1)*width)), # int(min(label.x + label.w / 2, 1) * width),
+                    'ymin': max(1, int(max(label.y1, 0)*height)), # int(max(label.y - label.h / 2, 0) * height),
+                    'ymax': max(1, int(min(label.y2, 1)*height)), # int(min(label.y + label.h / 2, 1) * height),
                 },
                 # misc meta
-                'user': plume.get('user'),
-                'id': plume.id,
-                'prev_id': plume.get('prev_id'),
-                'origin_id': plume.get('origin_id')
+                'user': label.get('user'),
+                'id': label.id,
+                'prev_id': label.get('prev_id'),
+                'origin_id': label.get('origin_id')
             }
-            for _, plume in plumes.iterrows()
+            for _, label in labels.iterrows()
         ],
     }
 
@@ -117,6 +113,23 @@ def dict2xml(data, root='root', key=None):
 '''Training Sets'''
 
 
+def split_dataset(data, splits):
+    '''Perform train/test split with an arbitrary number of splits.
+    Arguments:
+        data (numpy.array, pandas.Series, etc.): something that can take binary indexing.
+        splits (list): the splits you want to take. List is normalized to sum to 1.
+    Returns:
+        (len(split) + 1) splits.
+    '''
+    norm = sum(splits) * 1. if len(splits) > 1 else 1
+    rand = np.random.rand(len(data))
+    splits = [None] + list(splits) + [None]
+
+    return [
+        data[ (s1 is None or rand >  s1 / norm) & 
+              (s2 is None or rand <= s2 / norm) ]
+        for s1, s2 in zip(splits[:-1], splits[1:])
+    ]
 
 
 def get_constrained(frame_counts, n=2):
@@ -130,14 +143,11 @@ def get_constrained(frame_counts, n=2):
 
 
 '''Misc'''
-def ensure_dir(dir):
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
 
 
         
 class Exporter(object):
+
     def __init__(self, name='UOImages', data_dir='Data'):
         self.base_dir = os.path.join(data_dir, name)
         self.image_dir = os.path.join(self.base_dir, 'Images')
@@ -158,13 +168,12 @@ class Exporter(object):
         if skip_images:
             srcs = pipeline.input_srcs
             srcs = [src for src in srcs if not os.path.join(self.image_dir, pipeline.src_to_idx(src) + save_ext)]
-            ims = srcs
-            shape = pipeline.first().shape
+            ims = srcs # fake images
+            shape = pipeline.first().shape # need to load one to get the shape
         else:
             ims, srcs = pipeline, pipeline.srcs
             
-        for i, im in enumerate(ims):
-            src = pipeline.srcs[i]
+        for im, src in zip(ims, srcs):
             idx = imdb.src_to_idx(src)
             date = imdb.df.at[src, 'date']
             
@@ -179,19 +188,20 @@ class Exporter(object):
                     utils.set_date(im_path, date)
                 
             if not skip_annotations and (recompute or not os.path.isfile(ann_path)):
-                labels = img_labels.loc[src]
-                
+                labels = img_labels.loc[[src]]
+
                 ann_dict = generate_annotation(src, labels, size=shape, 
                                                date=date, 
                                                bgsub_params=bgsubargs)
                 root = dict2xml(ann_dict, root='annotation')
                 ET.ElementTree(root).write(ann_path)
+    
+
         
-        
-    def export_splits(self, df, resample=True, test_size=0.3):        
+    def export_splits(self, df, constraint=False, test_size=0.3):        
         print('generating splits...')
-        if resample:
-            idx_subset = exporter.resample_by_duration(df)
+        if constraint:
+            idx_subset = resample_by_duration(df, constraint)
         else:
             idx_subset = df.index
         
@@ -200,8 +210,8 @@ class Exporter(object):
         
         print('creating splits...')
         # create splits
-        X_trainval, X_test = train_test_split(idx_subset, test_size=test_size)
-        X_train, X_val = train_test_split(X_trainval, test_size=test_size)
+        X_test, X_trainval = split_dataset(idx_subset, [test_size])
+        X_val, X_train = split_dataset(X_trainval, [test_size])
 
         splits = [
             ('trainval', X_trainval), 
@@ -238,39 +248,39 @@ class Exporter(object):
                         f.write('{} {}\n'.format(filename2index(src), contains_label))
     
     
-    def resample_by_duration(self, df):
-        only_plumes = df.label == 'plume'
-        
-        # this is the current distribution of the frame durations. it is heavily biased towards longer plumes.
-        frame_distr = df[only_plumes].groupby('plume_dur').src.count()
-        # This is the distribution of plume instances. we want our training set to more closely mirror this.
-        inst_distr = df[only_plumes].groupby('plume_dur').origin_id.nunique()
+def resample_by_duration(df, constraint=10):
+    only_plumes = df.label == 'plume'
+    
+    # this is the current distribution of the frame durations. it is heavily biased towards longer plumes.
+    frame_distr = df[only_plumes].groupby('plume_dur').src.count()
+    # This is the distribution of plume instances. we want our training set to more closely mirror this.
+    inst_distr = df[only_plumes].groupby('plume_dur').origin_id.nunique()
 
-        # build frame count distributions
-        frame_counts = pd.DataFrame({
-            'frames_available': frame_distr, 
-            'frames_required': inst_distr / inst_distr.sum() * frame_distr.sum()
-        })
+    # build frame count distributions
+    frame_counts = pd.DataFrame({
+        'frames_available': frame_distr, 
+        'frames_required': inst_distr / inst_distr.sum() * frame_distr.sum()
+    })
 
-        frame_counts['frames_used'] = get_constrained(frame_counts, n=args.constraint)
-        frame_counts['prob'] = (frame_counts.frames_used
-                               / frame_counts.frames_used.sum() 
-                               / frame_counts.frames_available)
+    frame_counts['frames_used'] = get_constrained(frame_counts, n=constraint)
+    frame_counts['prob'] = (frame_counts.frames_used
+                           / frame_counts.frames_used.sum() 
+                           / frame_counts.frames_available)
 
 
-        print('getting probability weightings...')
-        plumes_dist = frame_counts.prob[df.loc[only_plumes, 'plume_dur']]
-        df.loc[only_plumes, 'prob'] = plumes_dist.values 
+    print('getting probability weightings...')
+    plumes_dist = frame_counts.prob[df.loc[only_plumes, 'plume_dur']]
+    df.loc[only_plumes, 'prob'] = plumes_dist.values 
 
-        print('resampling dataset...')
-        max_dataset_size = int(frame_counts.frames_used.sum())
-        print('max resampled dataset size:', max_dataset_size)
+    print('resampling dataset...')
+    max_dataset_size = int(frame_counts.frames_used.sum())
+    print('max resampled dataset size:', max_dataset_size)
 
-        # I changed to this so that we would use all of the negative samples
-        plume_idxs = np.random.choice(df[only_plumes].index, size=max_dataset_size, replace=False, 
-                                      p=df[only_plumes].prob)
-        idx_subset = df[~only_plumes].index.union(plume_idxs)
-        return idx_subset
+    # I changed to this so that we would use all of the negative samples
+    plume_idxs = np.random.choice(df[only_plumes].index, size=max_dataset_size, replace=False, 
+                                  p=df[only_plumes].prob)
+    idx_subset = df[~only_plumes].index.union(plume_idxs)
+    return idx_subset
         
         
         
@@ -296,36 +306,37 @@ if __name__ == '__main__':
                     help='max number of images to get (for testing or smaller batch)')
     parser.add_argument('--start', default=0, type=int,
                     help='image index offset.')
-    parser.add_argument('--plume-file', default='plumes-origin.csv', 
-                        help='the csv of plumes to use')
+    parser.add_argument('--label-file', default='labels.csv', 
+                        help='the csv of labels to use')
     
     # image generation
     parser.add_argument('--rescale', default=None, type=float,
-                    help='proportion to rescale images (dimensions). Use 0.5 to resize to half. {} is used by default.'.format(uo.RESCALE))
+                    help='proportion to rescale images (dimensions). e.g. use 0.5 to resize to half.')
     parser.add_argument('-w', '--window', default=None, type=int,
                     help='the background subtraction window size')
     parser.add_argument('--blur', default=None, type=int,
                     help="the blur radius. must be odd or you'll get an error. set to 0 to disable")
     parser.add_argument('--scale', default=None, type=float,
-                    help='proportion to rescale bgsub images (amplitude). Use when you want to tweak how visible the plumes are.')
+                    help='proportion to rescale bgsub images (amplitude). Use when you want to magnify the signal.')
     parser.add_argument('--full-image', action='store_true',
                     help='dont crop the image?')
     
     # training set
-    parser.add_argument('--dont-resample', action='store_true',
-                    help="dont resample the plume distributions to match the distribution of plume instances")
-    parser.add_argument('--constraint', default=10, type=int,
-                    help="how loose the fitting of the plume distributions are")
+    parser.add_argument('--resample-constraint', default=False, type=int,
+                    help=("resample the plume distributions to match the distribution of plume instances. "
+                          "constraint defines how loose the fitting of the plume distributions are. I was using 10. "
+                          "A value of 10 means that the first 9 constraining bins will be ignored. "
+                          "leave blank to not resample."))
     parser.add_argument('--test-size', default=0.3, type=float,
                     help="proportion of dataset is for testing")
     
     # output
     parser.add_argument('--save-ext', default='.jpg',
                     help='the filetype to save to')
-    parser.add_argument('-d', '--base-dir', default='/gscratch/share/plumes_capstone/github/Data',
+    parser.add_argument('-d', '--base-dir', default='export',
                     help='base directory where the datasets are stored')
     parser.add_argument('--name', default='UOImages',
-                    help='name of the specific dataset')  
+                    help='name of the specific dataset')
 #       parser.add_argument('--serial', action='store_true',
 #                       help='dont use multiprocessing')    
     parser.add_argument('--seed', default=123321, type=int,
@@ -341,12 +352,12 @@ if __name__ == '__main__':
     
     # Get the list of files to compute
     print('Getting full list of images...')
-    imdb = uo.uoimdb()
+    imdb = uoimdb()
     print(imdb.df.shape)
     
     print('loading labels dataset...')
-    plumes_df = pd.read_csv(args.plume_file).set_index('id')
-    print(plumes_df.shape)
+    labels_df = get_ground_truth(args.label_file).set_index('id')
+    print(labels_df.shape)
     
     if args.list: # load from a list of file paths
         print('Loading images from file list...')
@@ -354,7 +365,7 @@ if __name__ == '__main__':
             srcs = [src.strip() for src in f]
             
     else: # load all images with labels
-        srcs = plumes_df.src.unique()
+        srcs = labels_df.src.unique()
         if args.entire_day:
             print('loading all images on days with labels...')
             dates = imdb.df.loc[srcs].date.dt.date.unique()
@@ -369,51 +380,65 @@ if __name__ == '__main__':
         srcs = srcs[:args.n]
     
     
-    
+    # TODO: need to store register of all pipe operations in annotations, or somewhere where we can reconstitute them.
     # get bg subtraction params
     bgsubargs = dict(crop=not args.full_image, window_size=args.window, blur_radius=args.blur, scale=args.scale)
     bgsubargs = {k: v for k, v in bgsubargs.items() if v is not None}
     
     # set scaling parameter (changes the dimensions of the image)
     if args.rescale:
-        uo.RESCALE = args.rescale
+        imdb.cfg.RESCALE = args.rescale
         
-        
+    if args.window:
+        imdb.cfg.BG.WINDOW = [args.window]*2
+
+    if args.blur:
+        imdb.BG.BLUR_RADIUS = args.blur
+
+    if args.scale:
+        args.BG.SCALE = args.scale
         
     # get the labels grouped by each image
-    img_labels = plumes_df.reset_index()
+    img_labels = labels_df.reset_index()
     img_labels = img_labels[img_labels.src.isin(srcs)].set_index('src')
+
+
+    ## build pipeline
+
+    # feed images
+    pipeline_single = imdb.pipeline().use_window()
+    if not args.full_image:
+        pipeline_single.crop()
+    pipeline_single.single_bgsub2() # will yield a single background sub image each time it's fed.
     
-    pipeline = imdb.feed_images((
-        imdb.load_around(src).single_bgsub2().first() 
-        for src in srcs), 
-    srcs=srcs).progress(1)
+    pipeline = imdb.feed_images((pipeline_single.feed(src=src).first() for src in srcs), srcs=srcs).progress(1)
     
+
     if not args.skip_images or not args.skip_annotations:
         print('Beginning background subtraction and annotation export...')
         print( '{} images & {} annotations existing'.format(
             len(glob.glob(os.path.join(exporter.image_dir, '*' + args.save_ext))),
             len(glob.glob(os.path.join(exporter.ann_dir, '*.xml'))) ))
         
-        exporter.export_imgs_anns(pipeline, img_labels, skip_images=args.skip_images, skip_annotations=args.skip_annotations, bgsubargs=bgsubargs)
+        exporter.export_imgs_anns(pipeline, img_labels, skip_images=args.skip_images, skip_annotations=args.skip_annotations) # , bgsubargs=bgsubargs
         
     
     if args.list or args.split_specified:
         loaded_srcs = srcs
-    else: # split all existing
+    else: # split all existing. just in case anything failed.
         loaded_srcs = [
             os.path.splitext(os.path.basename(p).replace(',', '/'))[0]
             for p in glob.glob(os.path.join(exporter.image_dir, '*'))
         ]
     
     # remove images that failed to load
-    plumes_df1 = plumes_df[plumes_df.src.isin(loaded_srcs)].copy()
-    print(plumes_df1.shape, len(loaded_srcs))
+    labels_df1 = labels_df[labels_df.src.isin(loaded_srcs)].copy()
+    print(labels_df1.shape, len(loaded_srcs))
     
     '''Generate splits'''
     
     if not args.skip_splits:
-        exporter.export_splits(plumes_df1, resample=not args.dont_resample, test_size=args.test_size)
+        exporter.export_splits(labels_df1, constraint=args.resample_constraint, test_size=args.test_size)
         
             
     print('------------------------------------------------------------')

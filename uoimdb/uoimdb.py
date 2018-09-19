@@ -382,7 +382,6 @@ class Pipeline(object):
         self.current_i = None # the current loop iteration
         self._window = None # the number of frames to load around a singular src
         self.clear_feed() # initialize variables
-        self._iter = None # stores the pipeline iterator
 
 
     @property
@@ -411,6 +410,7 @@ class Pipeline(object):
         if srcs is None and imgs is None and src is None:
             srcs = self.input_srcs # reload the image generator
         
+        self._iter = None # stores the pipeline iterator
         self.input_srcs = srcs
         self.i_fg = None
         self.src_fg = None
@@ -440,6 +440,7 @@ class Pipeline(object):
         self.src_fg = None
         self.srcs = []
         self._input = None
+        self._iter = None
 
 
     def use_window(self, window=None):
@@ -509,7 +510,7 @@ class Pipeline(object):
 
     def first(self):
         '''Get the first element. Useful for single element iterators'''
-        return next(self)
+        return next(self) # keep 
 
     def borrow_first(self):
         a = self.first()
@@ -519,7 +520,6 @@ class Pipeline(object):
     def tolist(self):
         '''Convert iterator to list'''
         return list(self)
-
 
     #def clone(self):
     #    '''Copy the image pipeline. Warning: this doesn't change the references to the pipeline in the pipe closures, so basically this won't work.'''
