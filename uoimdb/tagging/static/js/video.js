@@ -14,6 +14,11 @@ var video_interval = null;
 var row = d3.select('#grid');
 
 var timeline = d3.select('#video-timeline');
+timeline.append('div').attr('class', 'timeline'); // grey bar across entire screen
+timeline.append('div').attr('class', 'tl-marker'); // blue progress bar
+timeline.append('div').attr('class', 'tl-marker-current'); // darkgrey indicator for current img
+timeline.append('div').attr('class', 'tl-marker-center')
+	.append('span').attr('class', 'fa fa-caret-down'); // darkgrey indicator for center img
 
 // bind control events
 var nav = d3.select('.navbar');
@@ -130,12 +135,22 @@ Timeline/image initialization
 
 
 function drawTimeline(data) {
-	window.video_data = data; // globally accessible
+	window.video_data = data.timeline; // globally accessible
+
+	var dx = (1. / video_data.length)*100;
+	timeline.select('.tl-marker-current').style('width', dx + '%');
+	timeline.select('.tl-marker-center').style('width', dx + '%')
+		.style('display', data.i_center != null ? 'block' : 'none')
+		.style('left', data.i_center != null ? ((data.i_center / video_data.length)*100 + '%') : 0);
+
+	d3.select('#prev_query').attr('href', data.prev_query).style('display', data.prev_query?'block':'none');
+	d3.select('#next_query').attr('href', data.next_query).style('display', data.next_query?'block':'none');
+
 
 	timeline.on('click', function(){
 			pause();
 			var mouse = d3.mouse(this);
-			var box = this.getBoundingClientRect()
+			var box = this.getBoundingClientRect();
 			var percent = mouse[0] / box.width;
 			updateVideoPercent(percent);
 		})
@@ -153,16 +168,12 @@ function drawTimeline(data) {
 			tooltip.append('span').call(badge, 'dark').text(`${img.date}`);
 		}, true);
 
-	var dx = (1. / video_data.length)*100;
-
-	timeline.append('div').attr('class', 'timeline'); // grey bar across entire screen
-	timeline.append('div').attr('class', 'tl-marker'); // blue progress bar
-	timeline.append('div').attr('class', 'tl-marker-current').style('width', dx + '%'); // darkgrey indicator for current img
-
-	data.forEach((d, i) => {d.index = i}); // add index so we know where to put the labels
+	video_data.forEach((d, i) => {d.index = i}); // add index so we know where to put the labels
 
 	var label_markers = timeline.selectAll('.label-stack')
-		.data(data.filter((d) => d.boxes)).enter()
+		.data(video_data.filter((d) => d.boxes));
+
+	label_markers.enter()
 		.append('div').attr('class', 'label-stack')
 		.style('left', (d) => (d.index / video_data.length)*100 + '%') //  - dx/2.
 		.style('width', dx + '%')
@@ -174,14 +185,18 @@ function drawTimeline(data) {
 			.call(bindTooltip, tooltip)
 			.on('mousemove.update-tooltip', function(d){
 				tooltip.append('span').call(badge, 'dark').text(`${d.label},${d.user}`);
-			})
+			});
 
+	label_markers.exit().remove();
 	
 	var pos = parseInt(get_hash()[1]) || 0;
+	if(data.i_center != null) {
+		pos = data.i_center;
+	}
+	window.video_cursor = pos;
+
 	set_hash(pos, 1);
-	updateVideoPosition(pos);
-
-
+	updateVideoPosition(0);
 }
 
 
@@ -199,7 +214,8 @@ function updateVideoPercent(percent) {
 
 window.frameRequested = false;
 function updateVideoPosition(i, preload_n, preload_n_prev) {
-	if(!video_data) return;
+	if(!video_data || !video_data.length) return;
+	console.log(i)
 
 	i = window.video_cursor + (i || 0);
 	i = Math.min(Math.max(0, i), video_data.length - 1);

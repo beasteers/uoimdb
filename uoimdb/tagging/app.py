@@ -170,16 +170,16 @@ class TaggingApp(object):
 			return render_template('calendar.j2', title='Calendar', calendar=self.get_calendar())
 
 
-		@self.app.route('/cal/<date>/')
-		@flask_login.login_required
-		def timeline_day(date):
-			'''Display images on a certain day'''
-			timeline = self.get_timeline(date)
-			prev_day, next_day = self.get_next_prev_date(date)
+		# @self.app.route('/cal/<date>/')
+		# @flask_login.login_required
+		# def timeline_day(date):
+		# 	'''Display images on a certain day'''
+		# 	timeline = self.get_timeline(date)
+		# 	prev_day, next_day = self.get_next_prev_date(date)
 
-			return render_template('tagger.j2', title='{}'.format(date), 
-				timeline=timeline.to_dict(orient='records'),
-				prev_day=prev_day, next_day=next_day, date=date) # 
+		# 	return render_template('tagger.j2', title='{}'.format(date), 
+		# 		timeline=timeline.to_dict(orient='records'),
+		# 		prev_day=prev_day, next_day=next_day, date=date) # 
 
 
 		@self.app.route('/video/<date>/')
@@ -187,22 +187,11 @@ class TaggingApp(object):
 		@flask_login.login_required
 		def video_day(date, time_range='5-18'):
 			'''Display images on a certain day'''
-			
-			# get dataframe of [src, date, label_count]
-			im_dates = self.imdb.df.date[self.imdb.df.date.dt.strftime(self.cfg.DATE_FORMAT) == date]
-
-			morning, evening = time_range.split('-')
-			if morning:
-				im_dates = im_dates[im_dates.dt.hour >= int(morning)]
-			if evening:
-				im_dates = im_dates[im_dates.dt.hour < int(evening)]		
-
-			timeline = self.get_boxes_for_imgs(im_dates.dt.strftime(self.cfg.DATETIME_FORMAT))
 			prev_day, next_day = self.get_next_prev_date(date)
 
 			return render_template('video.j2', title='{}'.format(date), 
-				timeline=timeline.to_dict(orient='records'),
-				prev_day=prev_day, next_day=next_day, date=date)
+				query=url_for('get_images', date=date, time_range=time_range),
+				prev_day=prev_day, next_day=next_day)
 
 
 		@self.app.route('/has-labels')
@@ -212,24 +201,19 @@ class TaggingApp(object):
 		def video_all_labels(date=None, time_range=None):
 			'''Display images on a certain day'''
 
-			# get dataframe of [src, date, label_count]
-			df = self.imdb.df.date[self.imdb.df.index.isin(self.labels_df.src)]
-
-			if date:
-				df = df[self.imdb.df.date.dt.strftime(self.cfg.DATE_FORMAT) == date]
-
-			morning, evening = time_range.split('-') if time_range else (None, None)
-			if morning:
-				df = df[df.dt.hour >= int(morning)]
-			if evening:
-				df = df[df.dt.hour < int(evening)]
-
-			timeline = self.get_boxes_for_imgs(df.dt.strftime(self.cfg.DATETIME_FORMAT))
 			prev_day, next_day = self.get_next_prev_date(date) if date else (None, None)
 
-			return render_template('video.j2', title='Only Images With Labels',
-				timeline=timeline.to_dict(orient='records'),
-				prev_day=prev_day, next_day=next_day, date=date) # 
+			return render_template('video.j2', title='Only Images With Labels', date=date,
+				query=url_for('get_images', date=date, time_range=time_range, has_labels=1)) # 
+
+
+		@self.app.route('/random/')
+		@flask_login.login_required
+		def random_video():
+			'''Display images on a certain day'''
+
+			return render_template('video.j2', title='Random', 
+				query=url_for('get_images', random=1))
 
 
 
@@ -288,6 +272,75 @@ class TaggingApp(object):
 			return redirect(url_for('calendar'))
 
 
+		@self.app.route('/query_images')
+		@flask_login.login_required
+		def get_images():
+			'''retrieve images using some constraints'''
+
+			# parse request
+			src = request.args.get('src')
+			lwindow, rwindow = [int(w) for w in request.args.get('window', '20,20').split(',')]
+
+			start_date = request.args.get('start_date')
+			end_date = request.args.get('end_date')
+			date = request.args.get('date')
+			time_range = request.args.get('time_range')
+
+			random = request.args.get('random')
+			has_labels = request.args.get('has_labels')
+
+			# start with all images and filter based on request
+			df = self.imdb.df.date
+
+			i_center = None
+			if src:
+				i = self.imdb.df.get_loc(src)
+				df = df.iloc[i - lwindow:i + rwindow]
+				i_center = lwindow
+
+			else:
+				if date:
+					df = df[df.dt.date == pd.to_datetime(date).date()]
+				else:
+					if start_date:
+						df = df[df.dt.date >= pd.to_datetime(start_date).date()]
+					if end_date:
+						df = df[df.dt.date < pd.to_datetime(end_date).date()]
+
+				if time_range:
+					morning, evening = time_range.split('-')
+					if morning:
+						df = df[df.dt.hour >= int(morning)]
+					if evening:
+						df = df[df.dt.hour < int(evening)]	
+
+				if has_labels:
+					df = df[df.index.isin(self.labels_df.src)]
+
+				if random:
+					i = np.random.randint(lwindow, len(df) - rwindow) # get random row constrained by window.
+					df = df.iloc[i - lwindow:i + rwindow]
+					i_center = lwindow
+
+			# for all filtered images, get bounding boxes
+			timeline = self.get_boxes_for_imgs(df)
+
+			# build queries for prev/next buttons
+			prev_query, next_query = {}, {}
+			if date:
+				prev_query['date'], next_query['date'] = self.get_next_prev_date(date)
+			if random:
+				next_query['random'] = 1
+				if prev_query:
+					prev_query['random'] = 1
+
+			return jsonify(dict(
+				timeline=timeline.to_dict(orient='records'),
+				prev_query=url_for('get_images', **prev_query) if prev_query else None, 
+				next_query=url_for('get_images', **next_query) if next_query else None, 
+				i_center=i_center))
+
+
 
 	def image_routes(self):
 		'''
@@ -329,7 +382,9 @@ class TaggingApp(object):
 
 
 	def get_boxes_for_imgs(self, df):
+		df = df.dt.strftime(self.cfg.DATETIME_FORMAT)
 		labels = self.labels_df[self.labels_df.src.isin(df.index)]
+
 		if len(labels):
 			boxes = labels.reset_index().groupby('src').apply(lambda s: s.to_dict(orient='records')).rename('boxes')
 			timeline = pd.concat([df, boxes], axis=1, sort=False).reset_index().rename(columns={'index': 'src'})

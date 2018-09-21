@@ -46,6 +46,20 @@ body {
 	background: white;
 }
 
+#video-timeline .tl-marker-center {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	text-align: center;
+}
+
+#video-timeline .tl-marker-center span {
+	color: red;
+	vertical-align: top;
+	line-height: 0;
+	font-size: 1.2em;
+}
+	
 
 #video-timeline .label-stack {
 	position: absolute;

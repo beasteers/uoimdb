@@ -1,6 +1,17 @@
 
 
+function loadImagesFromQuery(query) {
+	$.get( query )
+	.done(function(data) {
+		console.log(data);
+		drawTimeline(data);
+	});
+}
 
+d3.selectAll('.load-query').on('click', function(){
+	d3.event.preventDefault();
+	loadImagesFromQuery(d3.select(this).attr('href'));
+});
 
 /*
 
@@ -23,6 +34,8 @@ function bindTooltip(element, tooltip) {
 			tooltip.classed('visible', false);
 		});
 }
+
+
 
 
 var nav = d3.select('.navbar');
