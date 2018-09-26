@@ -111,12 +111,12 @@ class uoimdb(object):
 
             ], columns=['src', 'date', 'im']).set_index('src').sort_values('date')
 
-            self.df.im = self.df.im.astype(object)
             self.df['idx'] = self.df.index.map(self.src_to_idx)
             
             if len(self.df):
-                self.df.to_pickle(self._cache_file)
+                self.save_meta()
 
+        self.df['im'] = pd.Series(dtype=object)
 
             
     '''Filename handling functions'''
@@ -310,6 +310,10 @@ class uoimdb(object):
         '''Clear all image data'''
         self.df.loc[:, 'im'] = None
         self.image_cache_list.clear()
+        return self
+
+    def save_meta(self):
+        self.df.drop('im', axis=1, errors='ignore').to_pickle(self._cache_file)
         return self
     
 

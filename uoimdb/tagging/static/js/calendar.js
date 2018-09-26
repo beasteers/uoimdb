@@ -31,7 +31,8 @@ function drawCalendar(calendar) {
 	var color = d3.scaleLinear().domain([0, 0.1 + d3.max(block.data(), (d) => d[1].label_count)]).range(['black', 'MediumOrchid']).interpolate(d3.interpolateLab)
 	
 	// add badges to display image count and label count
-	block.append('span').attr('class', 'badge badge-pill badge-dark').text((d) => d[1].image_count + ' images')
+	block.append('span').attr('class', 'badge badge-pill badge-dark')
+		.text((d) => d[1].view_count + '/' + d[1].image_count + ' viewed')
 	block.append('span').attr('class', 'badge badge-pill badge-dark')
 		.text((d) => d[1].label_count + ' labels')
 		.style('background', (d) => color(d[1].label_count))

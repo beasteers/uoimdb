@@ -64,14 +64,8 @@
 
 {% block scripts %}
 	<script>
-    var timeline_data = {{ timeline if timeline else []|tojson }};
-    var images = {{ images if images else []|tojson }};
 		var img_filters = {{ filters|tojson }};
-
     var query = '{{ query }}';
-
-    // console.log(images);
-    console.log(timeline_data);
 	</script>
 	
 	<script src="{{ url_for('.static', filename='js/main.js') }}"></script>

@@ -58,6 +58,10 @@ class TaggingApp(object):
 		if not len(self.imdb.df):
 			raise SystemExit("No images found at {}... \(TnT)/".format(self.imdb.abs_file_pattern))
 
+		# store number of times an image was viewed
+		if not 'views' in self.imdb.df.columns:
+			self.imdb.df['views'] = 0
+
 		print('Image Database Shape: {}'.format(self.imdb.df.shape))
 		print(self.imdb.df.head())
 
@@ -200,7 +204,6 @@ class TaggingApp(object):
 		@flask_login.login_required
 		def video_all_labels(date=None, time_range=None):
 			'''Display images on a certain day'''
-
 			prev_day, next_day = self.get_next_prev_date(date) if date else (None, None)
 
 			return render_template('video.j2', title='Only Images With Labels', date=date,
@@ -211,7 +214,6 @@ class TaggingApp(object):
 		@flask_login.login_required
 		def random_video():
 			'''Display images on a certain day'''
-
 			return render_template('video.j2', title='Random', 
 				query=url_for('get_images', random=1))
 
@@ -245,6 +247,7 @@ class TaggingApp(object):
 			nlabels_prev = len(self.labels_df)
 			self.add_labels(json.loads(request.form['boxes']))
 			self.labels_df.to_csv(self.cfg.LABELS_FILE)
+			self.imdb.save_meta()
 
 			return jsonify({'message': 'Saved!', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
 
@@ -288,9 +291,10 @@ class TaggingApp(object):
 
 			random = request.args.get('random')
 			has_labels = request.args.get('has_labels')
+			viewed = request.args.get('viewed')
 
 			# start with all images and filter based on request
-			df = self.imdb.df.date
+			df = self.imdb.df.drop('im', 1)
 
 			i_center = None
 			if src:
@@ -300,22 +304,24 @@ class TaggingApp(object):
 
 			else:
 				if date:
-					df = df[df.dt.date == pd.to_datetime(date).date()]
+					df = df[df.date.dt.date == pd.to_datetime(date).date()]
 				else:
 					if start_date:
-						df = df[df.dt.date >= pd.to_datetime(start_date).date()]
+						df = df[df.date.dt.date >= pd.to_datetime(start_date).date()]
 					if end_date:
-						df = df[df.dt.date < pd.to_datetime(end_date).date()]
+						df = df[df.date.dt.date < pd.to_datetime(end_date).date()]
 
 				if time_range:
 					morning, evening = time_range.split('-')
 					if morning:
-						df = df[df.dt.hour >= int(morning)]
+						df = df[df.date.dt.hour >= int(morning)]
 					if evening:
-						df = df[df.dt.hour < int(evening)]	
+						df = df[df.date.dt.hour < int(evening)]	
 
-				if has_labels:
+				if has_labels == '1':
 					df = df[df.index.isin(self.labels_df.src)]
+				elif has_labels == '0':
+					df = df[~df.index.isin(self.labels_df.src)]
 
 				if random:
 					i = np.random.randint(lwindow, len(df) - rwindow) # get random row constrained by window.
@@ -324,7 +330,8 @@ class TaggingApp(object):
 
 			# for all filtered images, get bounding boxes
 			timeline = self.get_boxes_for_imgs(df)
-
+			timeline.date = timeline.date.dt.strftime(self.cfg.DATETIME_FORMAT) # make json serializable
+			print(timeline.head())
 			# build queries for prev/next buttons
 			prev_query, next_query = {}, {}
 			if date:
@@ -356,6 +363,8 @@ class TaggingApp(object):
 			img = self.image_processor.process_image(filename, filter)
 			if img is None:
 				img = np.array([]) # empty image
+			else:
+				self.imdb.df.at[filename, 'views'] += 1
 
 			return image_response(img)
 
@@ -382,17 +391,16 @@ class TaggingApp(object):
 
 
 	def get_boxes_for_imgs(self, df):
-		df = df.dt.strftime(self.cfg.DATETIME_FORMAT)
 		labels = self.labels_df[self.labels_df.src.isin(df.index)]
 
 		if len(labels):
-			boxes = labels.reset_index().groupby('src').apply(lambda s: s.to_dict(orient='records')).rename('boxes')
-			timeline = pd.concat([df, boxes], axis=1, sort=False).reset_index().rename(columns={'index': 'src'})
-			timeline.boxes = timeline.boxes.fillna('')
+			df['boxes'] = labels.reset_index().groupby('src').apply(lambda s: s.to_dict(orient='records')).rename('boxes')
+			df = df.reset_index().rename(columns={'index': 'src'})
+			df.boxes = df.boxes.fillna('')#.apply(lambda x: () if pd.isna(x) else x)
 		else:
-			timeline = df.reset_index()
-			timeline['boxes'] = ''
-		return timeline
+			df = df.reset_index()
+			df['boxes'] = ''
+		return df
 
 
 	def get_calendar(self):
@@ -403,6 +411,7 @@ class TaggingApp(object):
 			).apply(lambda day: pd.Series(dict(
 					image_count=len(day),
 					label_count=sum(self.labels_df.src.isin(day.src)),
+					view_count=sum(day.views > 0),
 					date=day.index[0].strftime(self.cfg.DATE_FORMAT)
 				)).to_dict()
 			).to_dict()

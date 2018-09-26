@@ -168,6 +168,7 @@ function drawTimeline(data) {
 			tooltip.append('span').call(badge, 'dark').text(`${img.date}`);
 		}, true);
 
+
 	video_data.forEach((d, i) => {d.index = i}); // add index so we know where to put the labels
 
 	var label_markers = timeline.selectAll('.label-stack')
@@ -188,6 +189,7 @@ function drawTimeline(data) {
 			});
 
 	label_markers.exit().remove();
+
 	
 	var pos = parseInt(get_hash()[1]) || 0;
 	if(data.i_center != null) {
@@ -215,7 +217,6 @@ function updateVideoPercent(percent) {
 window.frameRequested = false;
 function updateVideoPosition(i, preload_n, preload_n_prev) {
 	if(!video_data || !video_data.length) return;
-	console.log(i)
 
 	i = window.video_cursor + (i || 0);
 	i = Math.min(Math.max(0, i), video_data.length - 1);

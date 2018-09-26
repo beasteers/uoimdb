@@ -1,6 +1,7 @@
 
 
 function loadImagesFromQuery(query) {
+	console.log('Getting images from: ', query);
 	$.get( query )
 	.done(function(data) {
 		console.log(data);
@@ -402,6 +403,18 @@ function saveBoxes(){
 		window.edited_data = {};
 	});
 }
+
+// warn about unsaved changes before closing.
+window.addEventListener("beforeunload", function (e) {
+	var n_labels = Object.keys(window.edited_data).length;
+    if (!n_labels) return;
+
+    var confirmationMessage = 'You have ' + n_labels + ' unsaved labels. '
+                            + 'If you leave before saving, your changes will be lost.';
+
+    (e || window.event).returnValue = confirmationMessage; //Gecko + IE
+    return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+});
 
 
 
