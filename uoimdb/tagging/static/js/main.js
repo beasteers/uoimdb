@@ -10,8 +10,17 @@ function loadImagesFromQuery(query) {
 }
 
 d3.selectAll('.load-query').on('click', function(){
-	d3.event.preventDefault();
-	loadImagesFromQuery(d3.select(this).attr('href'));
+	var href = d3.select(this).attr('href')
+	if(href && href != '#') {
+		if(d3.select(this).classed('ajax')) {
+			d3.event.preventDefault();
+			loadImagesFromQuery(href);
+		} 
+		else {
+			window.location = href;
+		}
+	}
+	
 });
 
 /*
@@ -60,7 +69,7 @@ var toggle_original = nav.select('#toggle-original').on('click', function(){
 // bind control events
 var controls = d3.select('#controls');
 
-controls.select('#save').on('click', saveBoxes); // save label locations
+controls.select('#save').on('click', saveEverything); // save label locations
 
 controls.select('#imgFilter') // change image filter
 	.on('change', function(){changeImageFilter(this.value)})
@@ -404,16 +413,35 @@ function saveBoxes(){
 	});
 }
 
+function saveImageMeta(){
+	$.post( BASE_URL + 'save/meta/')
+	.done(function(data) {
+		console.log(data);
+		displayMessage('Saved metadata &#128077;');
+	});
+}
+
+function saveEverything(){
+	saveImageMeta();
+	saveBoxes();
+}
+
 // warn about unsaved changes before closing.
 window.addEventListener("beforeunload", function (e) {
 	var n_labels = Object.keys(window.edited_data).length;
+	saveImageMeta();
     if (!n_labels) return;
 
-    var confirmationMessage = 'You have ' + n_labels + ' unsaved labels. '
-                            + 'If you leave before saving, your changes will be lost.';
+    if(config.AUTOSAVE) {
+    	saveBoxes();
+    }
+    else {
+    	var confirmationMessage = 'You have ' + n_labels + ' unsaved labels. '
+	                            + 'If you leave before saving, your changes will be lost.';
 
-    (e || window.event).returnValue = confirmationMessage; //Gecko + IE
-    return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+	    (e || window.event).returnValue = confirmationMessage; //Gecko + IE
+	    return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+    }
 });
 
 

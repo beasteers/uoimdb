@@ -175,6 +175,9 @@ Date Utils
 
 '''
 
+def get_path_date(path):
+    '''Get the timestamp from a file path'''
+    return datetime.fromtimestamp(os.stat(path).st_mtime)
                 
 def set_date(fname, date):
     '''Set the timestamp of a file'''

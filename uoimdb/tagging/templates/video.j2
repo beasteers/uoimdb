@@ -28,8 +28,9 @@
     <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
 
     <div>
-      <a class="badge badge-light ml-1 load-query" id='prev_query'>&larr;</a>
-      <a class="badge badge-light ml-1 load-query" id='next_query'>&rarr;</a>
+      {% if parent_page %}<a class="badge badge-light ml-1" href="{{ parent_page }}"><i class='fa fa-home'></i></a>{% endif %}
+      <a class="badge badge-light ml-1 load-query {{ 'ajax d-none' if not prev_query }}" href="{{ prev_query or '' }}" id='prev_query'>&larr;</a>
+      <a class="badge badge-light ml-1 load-query {{ 'ajax d-none' if not next_query }}" href="{{ next_query or '' }}" id='next_query'>&rarr;</a>
     </div>
 
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">

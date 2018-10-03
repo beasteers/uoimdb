@@ -105,7 +105,7 @@ class uoimdb(object):
             self.df = pd.DataFrame([
                 dict(
                     src=self.path_to_src(path),
-                    date=self.get_path_date(path)) 
+                    date=utils.get_path_date(path)) 
 
                 for path in self.load_image_files()
 
@@ -148,10 +148,6 @@ class uoimdb(object):
 
     def idx_to_i(self, idx):
         return self.src_to_i(self.idx_to_src(idx))
-
-    def get_path_date(self, path):
-        '''Get the timestamp from an image path'''
-        return datetime.fromtimestamp(os.stat(path).st_mtime)
     
     
     '''Building pipeline'''

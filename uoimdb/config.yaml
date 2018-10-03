@@ -142,6 +142,8 @@ FASTFORWARD_STEP: 10 # the number of steps to take when clicking fastforward
 BACK_STEP: -1 # number of frames to go when clicking back
 FORWARD_STEP: 1 # number of frames to go when clicking forward
 
+AUTOSAVE: true
+
 # the speed slider control
 SPEED: 
   MIN: 100
@@ -157,6 +159,9 @@ KEYS:
   SELECT_ALL: 65 # cmd-A || ctl-A, select/deselect boxes
   DELETE_SELECTED: 8 # cmd-Delete || ctl-Delete, delete selected boxes
   TOGGLE_ORIGINAL: 38 # up arrow, toggles between last chosen filter and original image
+
+  PREV_PAGE: 37 # shift-left arrow, go to previous page
+  NEXT_PAGE: 39 # shift-right arrow, go to next page
 
   # this carries over boxes from the previous image to the current image
   DRAW_GHOSTBOXES: 13 # enter
