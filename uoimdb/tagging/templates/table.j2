@@ -2,12 +2,26 @@
 
 {% block nav %}
   <nav class="navbar navbar-expand-lg fixed-bottom">
-    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
+    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }} <small class='badge badge-light'>sample: {{ name }}</small></a>
     </button>
 
     <div class="collapse navbar-collapse">
       <a class="btn btn-outline-dark my-sm-0" href="{{ url_for('.calendar') }}">To Calendar</a>
     </div>
+
+    {% if links %}
+      <div class="dropup show">
+        <a class="btn btn-outline-dark dropdown-toggle" href="#" role="button" id="selectSample" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Choose Sample
+        </a>
+
+        <div class="dropdown-menu" aria-labelledby="selectSample">
+        {% for link in links %}
+          <a class="dropdown-item {{ 'active' if link.name == name }}" href="{{ link.url }}">{{ link.name }}</a>
+        {% endfor %}
+        </div>
+      </div>
+    {% endif %}
   </nav>
 {% endblock %}
 

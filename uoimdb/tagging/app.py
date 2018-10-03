@@ -5,18 +5,20 @@ sys.path.insert(1, '..')
 import os
 import cv2
 import json
+import glob
 import numpy as np
 import pandas as pd
 from datetime import datetime
 
 from flask import Flask, Blueprint
-from flask import request, render_template, jsonify, make_response, url_for, redirect, flash
+from flask import request, render_template, jsonify, make_response, url_for, redirect, flash, abort
 import flask_login
 import jinja2
 
 import uoimdb as uo
 from .image_processing import ImageProcessor
 from uoimdb.config import get_config
+from uoimdb import utils
 
 
 APP_ROOT = os.path.dirname(os.path.realpath(__file__))
@@ -58,6 +60,10 @@ class TaggingApp(object):
 		if not len(self.imdb.df):
 			raise SystemExit("No images found at {}... \(TnT)/".format(self.imdb.abs_file_pattern))
 
+		# store number of times an image was viewed
+		if not 'views' in self.imdb.df.columns:
+			self.imdb.df['views'] = 0
+
 		print('Image Database Shape: {}'.format(self.imdb.df.shape))
 		print(self.imdb.df.head())
 
@@ -68,11 +74,22 @@ class TaggingApp(object):
 		else:
 			self.labels_df = pd.DataFrame([], columns=['id', 'src', 'x', 'y', 'w', 'h']).set_index('id').fillna('')
 
+
 		# performs the image processing
 		self.image_processor = image_processor_class(self.imdb)
 
 		# used for finding consecutive days
 		self.dates_list = list(np.sort(np.unique(self.imdb.df.date.dt.strftime(cfg.DATE_FORMAT))))
+
+
+		# load all generated random samples
+		random_sample_dir = os.path.join(self.cfg.DATA_LOCATION, 'random_samples')
+		utils.ensure_dir(random_sample_dir)
+
+		self.random_samples = {
+			os.path.splitext(os.path.basename(f))[0]: pd.read_csv(f, index_col='src')
+			for f in glob.glob(os.path.join(random_sample_dir, '*.csv'))
+		}
 
 
 		# expose the configuration options to javascript so it can properly construct links
@@ -169,6 +186,15 @@ class TaggingApp(object):
 			'''Page that lists all images grouped by month/day'''
 			return render_template('calendar.j2', title='Calendar', calendar=self.get_calendar())
 
+		@self.app.route('/label-list/')
+		@flask_login.login_required
+		def label_list():
+			'''Page that lists all images grouped by month/day'''
+			df = self.labels_df.reset_index()
+			return render_template('table.j2', title='Collected Annotations', 
+				columns=df.columns, 
+				data=df.to_dict(orient='records'))
+
 
 		# @self.app.route('/cal/<date>/')
 		# @flask_login.login_required
@@ -187,11 +213,9 @@ class TaggingApp(object):
 		@flask_login.login_required
 		def video_day(date, time_range='5-18'):
 			'''Display images on a certain day'''
-			prev_day, next_day = self.get_next_prev_date(date)
 
 			return render_template('video.j2', title='{}'.format(date), 
-				query=url_for('get_images', date=date, time_range=time_range),
-				prev_day=prev_day, next_day=next_day)
+				query=url_for('get_images', date=date, time_range=time_range))
 
 
 		@self.app.route('/has-labels')
@@ -201,30 +225,95 @@ class TaggingApp(object):
 		def video_all_labels(date=None, time_range=None):
 			'''Display images on a certain day'''
 
-			prev_day, next_day = self.get_next_prev_date(date) if date else (None, None)
-
 			return render_template('video.j2', title='Only Images With Labels', date=date,
 				query=url_for('get_images', date=date, time_range=time_range, has_labels=1)) # 
 
 
-		@self.app.route('/random/')
+
+		@self.app.route('/random/all/')
 		@flask_login.login_required
 		def random_video():
 			'''Display images on a certain day'''
-
 			return render_template('video.j2', title='Random', 
 				query=url_for('get_images', random=1))
 
 
-
-		@self.app.route('/label-list/')
+		@self.app.route('/random/')
+		@self.app.route('/random/<name>/')
 		@flask_login.login_required
-		def label_list():
-			'''Page that lists all images grouped by month/day'''
-			df = self.labels_df.reset_index()
-			return render_template('table.j2', title='Collected Annotations', 
+		def random_sample_list(name=None):
+			'''Display images on a certain day'''
+			if name is None:
+				name = next(iter(self.random_samples.keys()))
+				return redirect(url_for('random_sample_list', name=name))
+
+			if name not in self.random_samples:
+				return redirect(url_for('create_random_sample', name=name))
+
+			# select random sample from imdb
+			sample = self.random_samples[name]
+			df = self.imdb.df.loc[sample.index]
+
+			# format table
+			df.insert(0, 'sample views', sample['views'])
+			df = (df.rename(columns={'views': 'image views'})
+					.drop(columns=['im', 'idx'])
+					.reset_index().reset_index())
+
+			df.src = [
+				'<a href="{}">{}</a>'.format(url_for('random_sample_video', name=name, i=i), src) 
+				for i, src in enumerate(df.src)
+			]
+
+			return render_template('table.j2', title='Random Sample: {}'.format(name), name=name,
 				columns=df.columns, 
-				data=df.to_dict(orient='records'))
+				data=df.to_dict(orient='records'), 
+				links=[
+					{'name': name, 'url': url_for('random_sample_list', name=name)}
+					for name in self.random_samples
+				])
+
+
+		@self.app.route('/random/<name>/create/')
+		@self.app.route('/random/<name>/create/<int:n>/')
+		@flask_login.login_required
+		def create_random_sample(name, n=1000):
+			'''Display images on a certain day'''
+			df = self.imdb.df
+
+			if not request.args.get('allow_overlap'):
+				for name, sample in self.random_samples.items():
+					df = df.drop(index=sample.index, errors='ignore')
+
+			self.random_samples[name] = pd.DataFrame(columns=['views'], index=df.sample(n=min(n, len(df))).index)
+			self.random_samples[name]['views'] = 0
+
+			self.random_samples[name].to_csv(
+				os.path.join(self.cfg.DATA_LOCATION, 'random_samples/{}.csv'.format(name)))
+
+			return redirect(url_for('random_sample_list', name=name))
+
+
+		@self.app.route('/random/<name>/<int:i>/')
+		@flask_login.login_required
+		def random_sample_video(name, i):
+			'''Display images on a certain day'''
+			if name in self.random_samples and i < len(self.random_samples[name]):
+				src = self.random_samples[name].index[i]
+				self.random_samples[name].loc[src, 'views'] += 1
+
+				self.random_samples[name].to_csv(
+					os.path.join(self.cfg.DATA_LOCATION, 'random_samples/{}.csv'.format(name)))
+
+				return render_template('video.j2', title='Random', 
+					query=url_for('get_images', sample_name=name, sample_index=i),
+					prev_query=url_for('random_sample_video', name=name, i=i-1) if i-1 >= 0 else None,
+					next_query=url_for('random_sample_video', name=name, i=i+1) if i+1 < len(self.random_samples[name]) else None,
+					parent_page=url_for('random_sample_list', name=name))
+			else:
+				return abort(404)
+
+		
 
 
 	def ajax_routes(self):
@@ -246,7 +335,15 @@ class TaggingApp(object):
 			self.add_labels(json.loads(request.form['boxes']))
 			self.labels_df.to_csv(self.cfg.LABELS_FILE)
 
-			return jsonify({'message': 'Saved!', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
+			return jsonify({'message': 'Saved boxes!', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
+
+		@self.app.route('/save/meta/', methods=['POST'])
+		@flask_login.login_required
+		def save_meta():
+			'''Save image meta (i.e. image view counts)'''
+			self.imdb.save_meta()
+
+			return jsonify({'message': 'Saved metadata!'})
 
 
 		@self.app.route('/select-images/')
@@ -279,7 +376,7 @@ class TaggingApp(object):
 
 			# parse request
 			src = request.args.get('src')
-			lwindow, rwindow = [int(w) for w in request.args.get('window', '20,20').split(',')]
+			lwindow, rwindow = [int(w) for w in request.args.get('window', '5,5').split(',')]
 
 			start_date = request.args.get('start_date')
 			end_date = request.args.get('end_date')
@@ -288,51 +385,82 @@ class TaggingApp(object):
 
 			random = request.args.get('random')
 			has_labels = request.args.get('has_labels')
+			viewed = request.args.get('viewed')
+
+			sample_name = request.args.get('sample_name')
+			sample_index = request.args.get('sample_index')
 
 			# start with all images and filter based on request
-			df = self.imdb.df.date
+			df = self.imdb.df.drop('im', 1)
 
 			i_center = None
+			if sample_name:
+				sample = self.random_samples[sample_name]
+				if sample_index is None:
+					sample_index = np.where(sample.views == 0)[0]
+				else:
+					sample_index = int(sample_index)
+				src = sample.index[sample_index]
+
 			if src:
-				i = self.imdb.df.get_loc(src)
-				df = df.iloc[i - lwindow:i + rwindow]
+				i = df.index.get_loc(src)
+				df = df.iloc[i - lwindow:i + 1 + rwindow]
 				i_center = lwindow
 
 			else:
 				if date:
-					df = df[df.dt.date == pd.to_datetime(date).date()]
+					df = df[df.date.dt.date == pd.to_datetime(date).date()]
 				else:
 					if start_date:
-						df = df[df.dt.date >= pd.to_datetime(start_date).date()]
+						df = df[df.date.dt.date >= pd.to_datetime(start_date).date()]
 					if end_date:
-						df = df[df.dt.date < pd.to_datetime(end_date).date()]
+						df = df[df.date.dt.date < pd.to_datetime(end_date).date()]
 
 				if time_range:
 					morning, evening = time_range.split('-')
 					if morning:
-						df = df[df.dt.hour >= int(morning)]
+						df = df[df.date.dt.hour >= int(morning)]
 					if evening:
-						df = df[df.dt.hour < int(evening)]	
+						df = df[df.date.dt.hour < int(evening)]	
 
-				if has_labels:
+				if has_labels == '1':
 					df = df[df.index.isin(self.labels_df.src)]
+				elif has_labels == '0':
+					df = df[~df.index.isin(self.labels_df.src)]
 
 				if random:
 					i = np.random.randint(lwindow, len(df) - rwindow) # get random row constrained by window.
-					df = df.iloc[i - lwindow:i + rwindow]
+					df = df.iloc[i - lwindow:i + 1 + rwindow]
 					i_center = lwindow
 
 			# for all filtered images, get bounding boxes
 			timeline = self.get_boxes_for_imgs(df)
+			timeline.date = timeline.date.dt.strftime(self.cfg.DATETIME_FORMAT) # make json serializable
 
 			# build queries for prev/next buttons
 			prev_query, next_query = {}, {}
+
+			if sample_name:
+				if sample_index - 1 >= 0:
+					prev_query['sample_name'] = sample_name
+					prev_query['sample_index'] = sample_index - 1
+				if sample_index + 1 < len(df):
+					next_query['sample_name'] = sample_name
+					next_query['sample_index'] = sample_index + 1
+			elif src:
+				if i_center - 1 >= 0:
+					prev_query['src'] = df.index[i_center-1]
+				if i_center + 1 < len(df):
+					next_query['src'] = df.index[i_center+1]
+
 			if date:
 				prev_query['date'], next_query['date'] = self.get_next_prev_date(date)
+
 			if random:
 				next_query['random'] = 1
 				if prev_query:
 					prev_query['random'] = 1
+
 
 			return jsonify(dict(
 				timeline=timeline.to_dict(orient='records'),
@@ -356,6 +484,8 @@ class TaggingApp(object):
 			img = self.image_processor.process_image(filename, filter)
 			if img is None:
 				img = np.array([]) # empty image
+			else:
+				self.imdb.df.at[filename, 'views'] += 1
 
 			return image_response(img)
 
@@ -382,17 +512,16 @@ class TaggingApp(object):
 
 
 	def get_boxes_for_imgs(self, df):
-		df = df.dt.strftime(self.cfg.DATETIME_FORMAT)
 		labels = self.labels_df[self.labels_df.src.isin(df.index)]
 
 		if len(labels):
-			boxes = labels.reset_index().groupby('src').apply(lambda s: s.to_dict(orient='records')).rename('boxes')
-			timeline = pd.concat([df, boxes], axis=1, sort=False).reset_index().rename(columns={'index': 'src'})
-			timeline.boxes = timeline.boxes.fillna('')
+			df['boxes'] = labels.reset_index().groupby('src').apply(lambda s: s.to_dict(orient='records')).rename('boxes')
+			df = df.reset_index().rename(columns={'index': 'src'})
+			df.boxes = df.boxes.fillna('')#.apply(lambda x: () if pd.isna(x) else x)
 		else:
-			timeline = df.reset_index()
-			timeline['boxes'] = ''
-		return timeline
+			df = df.reset_index()
+			df['boxes'] = ''
+		return df
 
 
 	def get_calendar(self):
@@ -403,6 +532,7 @@ class TaggingApp(object):
 			).apply(lambda day: pd.Series(dict(
 					image_count=len(day),
 					label_count=sum(self.labels_df.src.isin(day.src)),
+					view_count=sum(day.views > 0),
 					date=day.index[0].strftime(self.cfg.DATE_FORMAT)
 				)).to_dict()
 			).to_dict()

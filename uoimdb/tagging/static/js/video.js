@@ -77,6 +77,19 @@ var fastforward = nav.select('#fastforward').on('click', function(){
 });
 
 
+d3.select('body').on('keydown.prev-page', function(){
+    if(d3.event.shiftKey && d3.event.keyCode == config.KEYS.PREV_PAGE) {
+    	d3.select('#prev_query').dispatch('click');
+    	d3.event.stopImmediatePropagation();
+    }
+})
+d3.select('body').on('keydown.next-page', function(){
+    if(d3.event.shiftKey && d3.event.keyCode == config.KEYS.NEXT_PAGE) {
+    	d3.select('#next_query').dispatch('click');
+    	d3.event.stopImmediatePropagation();
+    }
+})
+
 d3.select('body').on('keypress.play-pause', function(){
 	if(d3.event.keyCode == config.KEYS.PLAY_PAUSE) togglePlay();
 })
@@ -86,7 +99,6 @@ d3.select('body').on('keydown.step-back', function(){
 d3.select('body').on('keydown.step-forward', function(){
     if(d3.event.keyCode == config.KEYS.STEP_FORWARD) updateVideoPosition(config.FORWARD_STEP);
 })
-
 
 d3.select('body').on('keydown.draw-ghostboxes', function(){
     if(d3.event.keyCode == config.KEYS.DRAW_GHOSTBOXES){ // enter
@@ -143,8 +155,8 @@ function drawTimeline(data) {
 		.style('display', data.i_center != null ? 'block' : 'none')
 		.style('left', data.i_center != null ? ((data.i_center / video_data.length)*100 + '%') : 0);
 
-	d3.select('#prev_query').attr('href', data.prev_query).style('display', data.prev_query?'block':'none');
-	d3.select('#next_query').attr('href', data.next_query).style('display', data.next_query?'block':'none');
+	d3.select('#prev_query.ajax').attr('href', data.prev_query).classed('d-none', data.prev_query);
+	d3.select('#next_query.ajax').attr('href', data.next_query).classed('d-none', data.next_query);
 
 
 	timeline.on('click', function(){
@@ -168,6 +180,7 @@ function drawTimeline(data) {
 			tooltip.append('span').call(badge, 'dark').text(`${img.date}`);
 		}, true);
 
+
 	video_data.forEach((d, i) => {d.index = i}); // add index so we know where to put the labels
 
 	var label_markers = timeline.selectAll('.label-stack')
@@ -188,6 +201,7 @@ function drawTimeline(data) {
 			});
 
 	label_markers.exit().remove();
+
 	
 	var pos = parseInt(get_hash()[1]) || 0;
 	if(data.i_center != null) {
@@ -215,7 +229,6 @@ function updateVideoPercent(percent) {
 window.frameRequested = false;
 function updateVideoPosition(i, preload_n, preload_n_prev) {
 	if(!video_data || !video_data.length) return;
-	console.log(i)
 
 	i = window.video_cursor + (i || 0);
 	i = Math.min(Math.max(0, i), video_data.length - 1);
