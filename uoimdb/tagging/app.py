@@ -259,12 +259,13 @@ class TaggingApp(object):
 				return abort(404, "{} doesnt exist. Create a random sample by going to /random/{}/create".format(name, name))
 
 			# select random sample from imdb
-			sample = self.random_samples[name]
-			df = (self.imdb.df.loc[sample.index]
-					.drop(columns=['im', 'idx'])
-					.reset_index()) # reset index so we get src
-
+			df = self.random_samples[name]
+			# move user columns first
+			df = df[[c for c in df.columns if c.startswith(user_col(''))] + 
+					[c for c in df.columns if not c.startswith(user_col(''))]]
+			
 			# link to image page
+			df = df.reset_index()
 			df.src = [
 				'<a href="{}">{}</a>'.format(url_for('random_sample_video', name=name, i=i), src) 
 				for i, src in enumerate(df.src)
@@ -366,6 +367,8 @@ class TaggingApp(object):
 			'''Display images on a certain day'''
 			if name in self.random_samples and i < len(self.random_samples[name]):
 				src = self.random_samples[name].index[i]
+				if not self.random_samples[name].loc[src, user_col('status')]:
+					self.random_samples[name].loc[src, user_col('status')] = 'viewed'
 
 				return render_template('video.j2', title='Random', sample_name=name,
 					query=url_for('get_images', sample_name=name, sample_index=i),
@@ -393,8 +396,8 @@ class TaggingApp(object):
 		for user in self.cfg.USERS:
 			# create columns that don't exist. resilient to new users
 			col = user_col('status', user)
-			if not col:
-				df[col] = 0
+			if not col in df.columns:
+				df[col] = ''
 
 			# create sample shuffle order for all users		
 			perm_id = user_col(name, user)
@@ -440,13 +443,14 @@ class TaggingApp(object):
 			nlabels_prev = len(self.labels_df)
 			boxes = request.form.get('boxes')
 			if boxes:
-				self.add_labels(json.loads(['boxes']))
+				self.add_labels(json.loads(boxes))
 				self.labels_df.to_csv(self.cfg.LABELS_FILE)
 
 			# save if image has been seen
 			name = request.form.get('sample_name')
 			img_meta = request.form.get('img_meta')
 			if name and img_meta:
+				img_meta = json.loads(img_meta)
 				for src, meta in img_meta.items():
 					self.random_samples[name].loc[src, user_col('status')] = meta['status']
 

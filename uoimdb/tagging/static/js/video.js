@@ -56,7 +56,7 @@ function setCurrentImageMeta(key, value, message=false) {
 	}
 	img_meta[src][key] = value;
 	if(message)
-		displayMessage('Current image '+status+' set to "'+value+'".', 2000);
+		displayMessage('Current image '+key+' set to "'+value+'".', 2000);
 }
 
 
