@@ -114,25 +114,27 @@ class uoimdb(object):
             self.df['idx'] = self.df.index.map(self.src_to_idx)
 
         if not 'time_gap' in self.df.columns:
+            print('Calculating time gap...')
             self.df['time_gap'] = (self.df.date - self.df.date.shift()).fillna(0) / np.timedelta64(1, 's')
 
-        # if not 'distance_to_gap' in self.df.columns:
-        self.df['distance_to_gap'] = 0.
+        if not 'distance_to_gap' in self.df.columns:
+            print('Calculating distance to closest time gap...')
+            self.df['distance_to_gap'] = 0.
 
-        distance_to_gap = np.inf
-        for i in self.df.index:
-            if self.df.at[i, 'time_gap'] >= self.cfg.TIME_GAP:
-                distance_to_gap = 0
-            self.df.at[i, 'distance_to_gap'] = distance_to_gap
-            distance_to_gap += 1
-
-        distance_to_gap = np.inf
-        for i in self.df.index[::-1]:
-            if self.df.at[i, 'time_gap'] >= self.cfg.TIME_GAP:
-                distance_to_gap = 0
-            if self.df.at[i, 'distance_to_gap'] > distance_to_gap:
+            distance_to_gap = np.inf
+            for i in self.df.index:
+                if self.df.at[i, 'time_gap'] >= self.cfg.TIME_GAP:
+                    distance_to_gap = 0
                 self.df.at[i, 'distance_to_gap'] = distance_to_gap
-            distance_to_gap += 1
+                distance_to_gap += 1
+
+            distance_to_gap = np.inf
+            for i in self.df.index[::-1]:
+                if self.df.at[i, 'time_gap'] >= self.cfg.TIME_GAP:
+                    distance_to_gap = 0
+                if self.df.at[i, 'distance_to_gap'] > distance_to_gap:
+                    self.df.at[i, 'distance_to_gap'] = distance_to_gap
+                distance_to_gap += 1
 
         if len(self.df):
             self.save_meta()
