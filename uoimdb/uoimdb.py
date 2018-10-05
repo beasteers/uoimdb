@@ -857,6 +857,22 @@ class Pipeline(object):
                 yield im.view(utils.metaArray).set_meta(i=i, src=src, idx=idx, **kw)
         return self.pipe(f, full=True)
 
+    def timer(self, every=1):
+        '''Prints execution time'''
+        def timer(imgs):
+            t = time.time()
+            buf = []
+            for i, _ in enumerate(imgs):
+                if every and i and not i % every:
+                    print('Time since last: {}. Avg iteration time: {}+-{} (2std). Total time: {}.'.format(np.sum(buf[-every]), np.mean(buf[-every:]), np.std(buf[-every:]), np.sum(buf)))
+                yield _
+                buff.append(time.time() - t)
+                t = time.time()
+            print('Total Time: {}. Average Time: {}+-{} (2std).'.format(np.sum(buf), np.mean(buf), np.std(buf)))
+
+        return self.pipe(timer, full=True)
+
+
     def progress(self, every=1):
         '''Prints the iteration number.
         Arguments:
