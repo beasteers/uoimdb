@@ -653,7 +653,7 @@ class TaggingApp(object):
 			).apply(lambda day: pd.Series(dict(
 					image_count=len(day),
 					label_count=sum(self.labels_df.src.isin(day.src)),
-					view_count=sum(day.views > 0),
+					#view_count=sum(day.views > 0),
 					date=day.index[0].strftime(self.cfg.DATE_FORMAT)
 				)).to_dict()
 			).to_dict()
