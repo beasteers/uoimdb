@@ -53,6 +53,7 @@ var expand_nav = nav.select('#expand-nav').on('click', function(){
 	nav.classed('collapsed', !nav.classed('collapsed')); // toggle collapsed
 });
 
+
 var previous_filter = get_hash()[0] == 'Original' ? img_filters[0] : null; 
 var toggle_original = nav.select('#toggle-original').on('click', function(){
 	if(previous_filter){
@@ -69,7 +70,7 @@ var toggle_original = nav.select('#toggle-original').on('click', function(){
 // bind control events
 var controls = d3.select('#controls');
 
-controls.select('#save').on('click', saveEverything); // save label locations
+controls.select('#save').on('click', saveBoxes); // save label locations
 
 controls.select('#imgFilter') // change image filter
 	.on('change', function(){changeImageFilter(this.value)})
@@ -393,8 +394,8 @@ function getBoxes(){
 }
 
 function saveBoxes(){
-	var data = Object.values(window.edited_data); // getBoxes();
-	console.log(data);
+	var boxes = Object.values(window.edited_data); // getBoxes();
+	console.log(boxes);
 
 	// d3.json('/save', {
 	// 	method: 'POST', 
@@ -405,7 +406,13 @@ function saveBoxes(){
 	// 	console.log(data);
 	// });
 
-	$.post( BASE_URL + 'save/', {boxes: JSON.stringify(data)})
+
+
+	$.post( BASE_URL + 'save/', {
+		boxes: JSON.stringify(boxes),
+		sample_name: sample_name,
+		img_meta: JSON.stringify(img_meta)
+	})
 	.done(function(data) {
 		console.log(data);
 		displayMessage('Saved &#128077;');
@@ -413,24 +420,24 @@ function saveBoxes(){
 	});
 }
 
-function saveImageMeta(){
-	$.post( BASE_URL + 'save/meta/')
-	.done(function(data) {
-		console.log(data);
-		displayMessage('Saved metadata &#128077;');
-	});
-}
+// function saveImageMeta(){
+// 	$.post( BASE_URL + 'save/meta/')
+// 	.done(function(data) {
+// 		console.log(data);
+// 		displayMessage('Saved metadata &#128077;');
+// 	});
+// }
 
-function saveEverything(){
-	saveImageMeta();
-	saveBoxes();
-}
+// function saveEverything(){
+// 	saveImageMeta();
+// 	saveBoxes();
+// }
 
 // warn about unsaved changes before closing.
 window.addEventListener("beforeunload", function (e) {
 	var n_labels = Object.keys(window.edited_data).length;
-	saveImageMeta();
-    if (!n_labels) return;
+	var n_metas = Object.keys(window.img_meta).length;
+    if (!n_labels && !n_metas) return;
 
     if(config.AUTOSAVE) {
     	saveBoxes();

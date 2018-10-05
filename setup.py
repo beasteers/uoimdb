@@ -13,7 +13,7 @@ setuptools.setup(name='uoimdb',
                  # include_package_data=True,
                  install_requires=[
                         'opencv-python', 
-                        'dill', 'imageio', 'numpy', 'pandas', 'matplotlib', # uoimdb
+                        'dill', 'imageio', 'numpy', 'pandas', 'matplotlib', 'filelock', # uoimdb
                         'PyYAML', # config.py
                         # 'Flask', 
                         'Flask-Login', # app.py

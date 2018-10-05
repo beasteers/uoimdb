@@ -222,11 +222,11 @@ body {
 	                                supported by Chrome and Opera */
 }
 
-.navbar .menu-actions i {
+.navbar .menu-actions > span {
 	cursor: pointer;
 	transition: color 0.2s ease-in-out;
 }
-.navbar .menu-actions i:hover {
+.navbar .menu-actions > span:hover {
 	color: white;
 }
 
@@ -283,6 +283,10 @@ body {
 	left: 100%;
 	top: 0;
 	bottom: 0;
+}
+
+#messages .badge {
+	font-size: 0.6em;
 }
 
 

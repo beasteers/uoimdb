@@ -14,17 +14,38 @@
 {% block nav %}
 {#  navbar-light bg-light #}
   <nav class="navbar navbar-expand-lg fixed-bottom collapsed">
+
+
     <div class='menu-actions'>
-      <i class="fas fa-sliders-h" id='expand-nav' title='More Options'></i>
-      <i class="fas fa-backward" id='rewind' title='Jump Backwards'></i>
-      <i class="fas fa-caret-left" id='step-back' title='Step Backwards'></i>
-      <i class="fas fa-play" id='play-pause' title='Play/Pause'></i>
-      <i class="fas fa-caret-right" id='step-forward' title='Step Forwards'></i>
-	  <i class="fas fa-forward" id='fastforward' title='Jump Forwards'></i>
-	  <i class="fas fa-image" id='toggle-original' title='Toggle Original'></i>
+      <span id='expand-nav' title='More Options'><i class="fas fa-sliders-h"></i></span>
+
+      <span id='rewind' title='Jump Backwards'><i class="fas fa-backward"></i></span>
+      <span id='step-back' title='Step Backwards'><i class="fas fa-caret-left"></i></span>
+
+      <span id='play-pause' title='Play/Pause'><i class="fas fa-play"></i></span>
+
+      <span id='step-forward' title='Step Forwards'><i class="fas fa-caret-right"></i></span>
+  	  <span id='fastforward' title='Jump Forwards'><i class="fas fa-forward"></i></span>
+
+  	  <span id='toggle-original' title='Toggle Original'><i class="fas fa-image"></i></span>
+
+      <span id='unlabeled-objects' title='Has Unlabeled Objects'>
+        <span class="fa-layers fa-fw">
+          <i class="far fa-square"></i>
+          <i class="fas fa-exclamation" data-fa-transform="shrink-6"></i>
+        </span>
+      </span>
+      <span id='no-objects' title='Has no Objects'>
+        <span class="fa-layers fa-fw">
+          <i class="far fa-square"></i>
+          <i class="fas fa-ban" data-fa-transform="shrink-6"></i>
+        </span>
+      </span>
+
       <span id="messages"></span>
     </div>
     
+
     <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
 
     <div>
@@ -67,6 +88,7 @@
 	<script>
 		var img_filters = {{ filters|tojson }};
     var query = '{{ query }}';
+    var sample_name = '{{ sample_name }}';
 	</script>
 	
 	<script src="{{ url_for('.static', filename='js/main.js') }}"></script>

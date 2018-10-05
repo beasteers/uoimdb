@@ -98,23 +98,44 @@ class uoimdb(object):
             self.df = pd.read_pickle(self._cache_file)
 
         else: # create imdb cache
-            print(('Missing {}. Needs to extract file timestamps which could take a WHILE. For >1M images, it was taking 20-30 mins. '
+            self.df = pd.DataFrame(index=pd.Index([
+                self.path_to_src(path)
+                for path in self.load_image_files()
+            ], name='src'))
+
+        if not 'date' in self.df.columns:
+            print(('Missing file timestamps in {}. Needs to extract file timestamps which could take a WHILE. For >1M images, it was taking 20-30 mins. '
                    'This only needs to run once though and subsequent times will load the cached pickle file and '
                    'finish in seconds.').format(self._cache_file))
-        
-            self.df = pd.DataFrame([
-                dict(
-                    src=self.path_to_src(path),
-                    date=utils.get_path_date(path)) 
+            self.df['date'] = self.df.index.map(lambda src: utils.get_path_date(self.src_to_path(src)))
+            self.df = self.df.sort_values('date')
 
-                for path in self.load_image_files()
-
-            ], columns=['src', 'date', 'im']).set_index('src').sort_values('date')
-
+        if not 'idx' in self.df.columns:
             self.df['idx'] = self.df.index.map(self.src_to_idx)
-            
-            if len(self.df):
-                self.save_meta()
+
+        if not 'time_gap' in self.df.columns:
+            self.df['time_gap'] = (self.df.date - self.df.date.shift()).fillna(0) / np.timedelta64(1, 's')
+
+        # if not 'distance_to_gap' in self.df.columns:
+        self.df['distance_to_gap'] = 0.
+
+        distance_to_gap = np.inf
+        for i in self.df.index:
+            if self.df.at[i, 'time_gap'] >= self.cfg.TIME_GAP:
+                distance_to_gap = 0
+            self.df.at[i, 'distance_to_gap'] = distance_to_gap
+            distance_to_gap += 1
+
+        distance_to_gap = np.inf
+        for i in self.df.index[::-1]:
+            if self.df.at[i, 'time_gap'] >= self.cfg.TIME_GAP:
+                distance_to_gap = 0
+            if self.df.at[i, 'distance_to_gap'] > distance_to_gap:
+                self.df.at[i, 'distance_to_gap'] = distance_to_gap
+            distance_to_gap += 1
+
+        if len(self.df):
+            self.save_meta()
 
         self.df['im'] = pd.Series(dtype=object)
 

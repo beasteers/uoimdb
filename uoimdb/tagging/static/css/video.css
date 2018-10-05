@@ -53,11 +53,12 @@ body {
 	text-align: center;
 }
 
-#video-timeline .tl-marker-center span {
+#video-timeline .tl-marker-center svg {
 	color: red;
 	vertical-align: top;
 	line-height: 0;
 	font-size: 1.2em;
+	margin-top: -0.5em;
 }
 	
 

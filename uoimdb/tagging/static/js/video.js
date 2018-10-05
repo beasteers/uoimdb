@@ -48,13 +48,23 @@ function getBoxes() { // used in /save
 	return video_data.reduce((result, d) => d.boxes ? result.concat(d.boxes) : result, []); 
 }
 
+window.img_meta = {};
+function setCurrentImageMeta(key, value, message=false) {
+	var src = video_data[video_cursor].src;
+	if(!img_meta[src]) {
+		img_meta[src] = {}
+	}
+	img_meta[src][key] = value;
+	if(message)
+		displayMessage('Current image '+status+' set to "'+value+'".', 2000);
+}
 
 
 
 
 /*
 
-Key Bindings
+Control Actions
 
 */
 
@@ -76,6 +86,26 @@ var fastforward = nav.select('#fastforward').on('click', function(){
     updateVideoPosition(config.FASTFORWARD_STEP);
 });
 
+var unlabeled_objects = nav.select('#unlabeled-objects').on('click', function(){
+	setCurrentImageMeta('status', 'has unlabeled objects', true);
+});
+
+var no_objects = nav.select('#no-objects').on('click', function(){
+    setCurrentImageMeta('status', 'no objects', true);
+});
+
+var no_objects = nav.select('#no-objects').on('click', function(){
+    setCurrentImageMeta('status', 'no objects', true);
+});
+
+
+
+/*
+
+Key Bindings
+
+*/
+
 
 d3.select('body').on('keydown.prev-page', function(){
     if(d3.event.shiftKey && d3.event.keyCode == config.KEYS.PREV_PAGE) {
@@ -91,19 +121,30 @@ d3.select('body').on('keydown.next-page', function(){
 })
 
 d3.select('body').on('keypress.play-pause', function(){
-	if(d3.event.keyCode == config.KEYS.PLAY_PAUSE) togglePlay();
+	if(d3.event.keyCode == config.KEYS.PLAY_PAUSE) 
+		togglePlay();
 })
 d3.select('body').on('keydown.step-back', function(){
-    if(d3.event.keyCode == config.KEYS.STEP_BACK) updateVideoPosition(config.BACK_STEP);
+    if(d3.event.keyCode == config.KEYS.STEP_BACK) 
+    	updateVideoPosition(config.BACK_STEP);
 })
 d3.select('body').on('keydown.step-forward', function(){
-    if(d3.event.keyCode == config.KEYS.STEP_FORWARD) updateVideoPosition(config.FORWARD_STEP);
+    if(d3.event.keyCode == config.KEYS.STEP_FORWARD) 
+    	updateVideoPosition(config.FORWARD_STEP);
+})
+
+d3.select('body').on('keydown.unlabeled-objects', function(){
+    if(d3.event.keyCode == config.KEYS.HAS_UNLABELED_OBJECTS) 
+    	nav.select('#unlabeled-objects').dispatch('click');
+})
+d3.select('body').on('keydown.no-objects', function(){
+    if(d3.event.keyCode == config.KEYS.HAS_NO_OBJECTS) 
+    	nav.select('#no-objects').dispatch('click');
 })
 
 d3.select('body').on('keydown.draw-ghostboxes', function(){
-    if(d3.event.keyCode == config.KEYS.DRAW_GHOSTBOXES){ // enter
-    	//console.log(selectCurrentImageContainer().selectAll('.pt.ghost').nodes())
-		selectCurrentImageContainer().selectAll('.pt.ghost').dispatch('click');//.each(function(){ d3.select(this).dispatch('click'); });
+    if(d3.event.keyCode == config.KEYS.DRAW_GHOSTBOXES){
+		selectCurrentImageContainer().selectAll('.pt.ghost').dispatch('click');
     } 
 })
 
@@ -210,7 +251,7 @@ function drawTimeline(data) {
 	window.video_cursor = pos;
 
 	set_hash(pos, 1);
-	updateVideoPosition(0);
+	updateVideoPosition(0, 0, 0);
 }
 
 
