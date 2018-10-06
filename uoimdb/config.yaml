@@ -48,7 +48,11 @@ CACHE_SIZE: 2000 # number of images that can be loaded at once. prevents memory 
 
 PIPELINE_INIT: True # initialize the pipeline by converting from bgr2rgb and resizing using the resize parameter below.
 
-RESCALE: False # the proportion to resize the images. For example, our images were ~(2k x 4k) which was way larger than required.
+# Resizing images at load. In our case, our images were ~(2k x 4k) which was way larger than we wanted to send to the browser.
+DOWNSAMPLE: False # (int) take every nth pixel. (e.g. for half size, use 2). more efficient than rescale because no interpolation needed.
+RESCALE: False # (float) the proportion to resize the images (e.g. for half size, use 0.5).
+
+ON_RENDER_DOWNSAMPLE: False # you can also perform all of the calculations using the full scale images and downsample before sending to browser.
 
 CROP: # the default proportion to crop images
   X1: 

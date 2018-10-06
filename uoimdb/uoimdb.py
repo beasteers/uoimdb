@@ -80,8 +80,10 @@ class uoimdb(object):
             if callable(pipeline_init): # use passed in init function
                 self.pipeline_init = pipeline_init
             elif self.cfg.PIPELINE_INIT: # can disable via config file
-                if self.cfg.RESCALE and self.cfg.RESCALE != 1:
-                    self.pipeline_init = lambda pipeline: pipeline.bgr2rgb().resize(self.cfg.RESCALE)
+                if self.cfg.DOWNSAMPLE and self.cfg.DOWNSAMPLE != 1:
+                    self.pipeline_init = lambda pipeline: pipeline.bgr2rgb().downsample()
+                elif self.cfg.RESCALE and self.cfg.RESCALE != 1:
+                    self.pipeline_init = lambda pipeline: pipeline.bgr2rgb().resize()
                 else: # rescale is disabled
                     self.pipeline_init = lambda pipeline: pipeline.bgr2rgb()
             
@@ -659,13 +661,28 @@ class Pipeline(object):
     def resize(self, scale=None):
         '''Resize the images by some proportional scaling parameter. 
         Arguments:
-            scale (float): The proportional scaling parameter. e.g. scale in half using scale=0.5 
+            scale (float): The proportional scaling parameter. e.g. scale in half using scale=0.5
         Returns:
             Pipe returns iterable of resized images.
         '''
         if scale is None:
             scale = self.cfg.RESCALE
+
         return self.pipe(lambda im: cv2.resize(im, None, fx=scale, fy=scale))
+        
+
+    def downsample(self, scale):
+        '''Resize the images by taking every nth pixel. 
+        Arguments:
+            scale (int): The proportional scaling parameter. e.g. scale in half using scale=0.5
+        Returns:
+            Pipe returns iterable of resized images.
+        '''
+        if scale is None:
+            scale = self.cfg.DOWNSAMPLE
+
+        scale = int(scale)
+        return self.pipe(lambda im: im[::scale, ::scale])
     
 
     def astype(self, dtype):
@@ -707,8 +724,6 @@ class Pipeline(object):
         Returns:
             Pipe returns iterable of background subtracted images.
         '''
-        if cmap is None:
-            cmap = self.cfg.BG.CMAP
         
         (self.grey()
              .blur()
@@ -760,7 +775,32 @@ class Pipeline(object):
              .scale()
              .clip()
              .invert()
-             .cmap(self.cfg.BG.CMAP)
+             .cmap()
+             .astype('uint8'))
+        return self
+
+
+    def single_bgsub3(self, method='mean'):
+        '''Performs fancy background subtraction for a single image. Includes the full pipeline:
+            convert to greyscale
+            ** background subtraction
+            scale up to increase visibility of differences
+            clip between 0 and 255 to avoid overflow
+            invert so white is static and black represents motion
+            convert to 'bone' cmap so it's prettier
+            convert to uint8 so matplotlib is happy
+
+        Arguments:
+            window (int): The size of the background subtraction window. Window is equal on each side (left-heavy for even-sized windows).
+        Returns:
+            Pipe returns iterable of background subtracted images.
+        '''
+        (self.grey()
+             .single_bgsub(method=method)
+             .scale()
+             .clip()
+             .invert()
+             .cmap()
              .astype('uint8'))
         return self
     
@@ -840,13 +880,15 @@ class Pipeline(object):
         return self.pipe(lambda im: vmax - im)
     
 
-    def cmap(self, cmap='bone'):
+    def cmap(self, cmap=None):
         '''Apply a colormap to the image.
         Arguments:
             cmap (str or matplotlib colormap): the matplotlib colormap to use.
         Returns:
             Pipe returns iterable of images with colormap applied.
         '''
+        if cmap is None:
+            cmap = self.cfg.BG.CMAP
         if isinstance(cmap, str):
             cmap = mpl.cm.get_cmap(cmap)
         
@@ -885,39 +927,9 @@ class Pipeline(object):
         return self.pipe(f, full=True)
     
     
-    def timer(self, every=1, label=''):
+    def timer(self, **kw):
         '''Prints execution time'''
-        if label:
-            label = '{}: '.format(label)
-        def timer(imgs):
-            buf = []
-            t = time.time()
-            for i, _ in enumerate(imgs):
-                dt = time.time() - t
-                if every and i and not i % every:
-                    print('{}Images {}-{}. '
-                          'Iteration Time: Avg={:.2f}±{:.2f}s(2sd), '
-                              'Min={:.2f}s, Max={:.2f}s, Sum={:.2f}s. '
-                          'Total Elapsed: {:.2f}s.'.format(label, i - every, i, 
-                        np.mean(buf[-every:]), 
-                        2*np.std(buf[-every:]), 
-                        np.min(buf[-every:]), 
-                        np.max(buf[-every:]), 
-                        np.sum(buf[-every:]), 
-                        np.sum(buf) ))
-                yield _
-                buf.append(dt)
-                t = time.time()
-            print('{} Images. Total Elapsed Time: {:.2f}. '
-                  'Iteration Time: Avg={:.2f}±{:.2f}s(2sd), '
-                      'Min={:.2f}s, Max={:.2f}s.'.format(i+1, 
-                np.sum(buf), 
-                np.mean(buf), 
-                2*np.std(buf),
-                np.min(buf), 
-                np.max(buf) ))
-
-        return self.pipe(timer, full=True)
+        return self.pipe(utils.timer, full=True, what='iterable', **kw)
     
     
     def progress(self, every=1):

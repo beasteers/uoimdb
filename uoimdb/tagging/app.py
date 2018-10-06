@@ -614,7 +614,7 @@ class TaggingApp(object):
 		@self.app.route('/filter/<filter>/<path:filename>')
 		@flask_login.login_required
 		def filtered_image(filter, filename):
-			cache_filename = os.path.realpath(os.path.join(self.cfg.IMAGE_CACHE_LOCATION, '{},{}'.format(filter, filename)))
+			cache_filename = self.image_processor.cache_filename(filename, filter)
 
 			if os.path.isfile(cache_filename):
 				return send_file(cache_filename)

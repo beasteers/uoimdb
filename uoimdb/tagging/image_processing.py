@@ -1,3 +1,4 @@
+import os
 import cv2
 from collections import OrderedDict as odict
 
@@ -27,6 +28,10 @@ class ImageProcessor(object):
 		for name in self.filters:
 			self.filters[name].fake_crop()
 
+		if imdb.cfg.ON_RENDER_DOWNSAMPLE:
+			for name in self.filters:
+				self.filters[name].downsample(imdb.cfg.ON_RENDER_DOWNSAMPLE)
+
 
 	def process_image(self, filename, filter=None):
 		filter = filter or 'Original'
@@ -40,9 +45,12 @@ class ImageProcessor(object):
 		if len(img.shape) < 3:
 			pass
 		elif img.shape[2] == 3:
-			img = cv2.convColor(img, cv2.COLOR_RGB2BGR)
+			img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 		elif img.shape[2] == 4:
-			img = cv2.convColor(img, cv2.COLOR_RGBA2BGRA)
+			img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
 
 		return img
+
+	def cache_filename(self, filename, filter):
+		return os.path.realpath(os.path.join(self.imdb.cfg.IMAGE_CACHE_LOCATION, '{},{}'.format(filter, filename)))
 

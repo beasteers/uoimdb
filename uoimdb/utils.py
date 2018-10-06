@@ -66,22 +66,68 @@ def progress(iterable, every=1, i=0):
     print(i, 'end')
     
     
-def timer(iterable, freq=None):
-    '''time each iteration of a generator
-    Arguments:
-        iterable: obvious
-        freq: number of iterations before updating on average time/iter
-    '''
-    times, t = [], time.time()
+def timer(iterable, every=1, label='', what='all'):
+    if label:
+        label = '{}: '.format(label)
+
+    buf = []
+    t = time.time()
     for i, _ in enumerate(iterable):
-        times.append(time.time() - t)
-        if freq and i and i % freq == 0: # report time over the last `freq` iterations
-            print('{} +- {}'.format( np.mean(times[-freq:]), np.std(times[-freq:]) ))
-        yield _
-        t = time.time()
-    if len(times): # report the overall time stats
-        print('average time:', np.mean(times), 'total time:', np.sum(times),
-              'min time:', np.min(times), 'max time:', np.max(times),)
+        if every and i and not i % every:
+            print('{}Images {}-{}. '
+                  'Iteration Time: Avg={:.2f}±{:.2f}s(2sd), '
+                      'Min={:.2f}s, Max={:.2f}s, Sum={:.2f}s. '
+                  'Total Elapsed: {:.2f}s.'.format(label, i - every, i, 
+                np.mean(buf[-every:]), 
+                2*np.std(buf[-every:]), 
+                np.min(buf[-every:]), 
+                np.max(buf[-every:]), 
+                np.sum(buf[-every:]), 
+                np.sum(buf) ))
+
+        if what == 'iterable':
+            dt = time.time() - t
+            yield _
+            buf.append(dt)
+            t = time.time()
+        if what == 'loop':
+            t = time.time()
+            yield _
+            dt = time.time() - t
+            buf.append(dt)
+        if what == 'all':
+            yield _
+            dt = time.time() - t
+            buf.append(dt)
+            t = time.time()
+            
+
+
+    print('{} Images. Total Elapsed Time: {:.2f}. '
+          'Iteration Time: Avg={:.2f}±{:.2f}s(2sd), '
+              'Min={:.2f}s, Max={:.2f}s.'.format(i+1, 
+        np.sum(buf), 
+        np.mean(buf), 
+        2*np.std(buf),
+        np.min(buf), 
+        np.max(buf) ))
+
+# def timer(iterable, freq=None):
+#     '''time each iteration of a generator
+#     Arguments:
+#         iterable: obvious
+#         freq: number of iterations before updating on average time/iter
+#     '''
+#     times, t = [], time.time()
+#     for i, _ in enumerate(iterable):
+#         times.append(time.time() - t)
+#         if freq and i and i % freq == 0: # report time over the last `freq` iterations
+#             print('{} +- {}'.format( np.mean(times[-freq:]), np.std(times[-freq:]) ))
+#         yield _
+#         t = time.time()
+#     if len(times): # report the overall time stats
+#         print('average time:', np.mean(times), 'total time:', np.sum(times),
+#               'min time:', np.min(times), 'max time:', np.max(times),)
 
 
 
