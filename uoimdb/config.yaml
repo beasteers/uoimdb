@@ -52,6 +52,7 @@ PIPELINE_INIT: True # initialize the pipeline by converting from bgr2rgb and res
 DOWNSAMPLE: False # (int) take every nth pixel. (e.g. for half size, use 2). more efficient than rescale because no interpolation needed.
 RESCALE: False # (float) the proportion to resize the images (e.g. for half size, use 0.5).
 
+ON_RENDER_CMAP: True
 ON_RENDER_DOWNSAMPLE: False # you can also perform all of the calculations using the full scale images and downsample before sending to browser.
 
 CROP: # the default proportion to crop images

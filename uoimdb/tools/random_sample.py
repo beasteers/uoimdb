@@ -38,6 +38,7 @@ def cache_images(sample, filter, timer_every=50, window=None, n=None):
             if img is None:
                 print('Failed creating {}.'.format(cache_filename))
             else: 
+                print(img.shape)
                 cv2.imwrite(cache_filename, img)
 
     print('Done. {} now contains {} images.'.format(

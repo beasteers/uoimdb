@@ -799,9 +799,7 @@ class Pipeline(object):
              .single_bgsub(method=method)
              .scale()
              .clip()
-             .invert()
-             .cmap()
-             .astype('uint8'))
+             .invert())
         return self
     
 

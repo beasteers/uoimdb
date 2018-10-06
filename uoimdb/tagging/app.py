@@ -617,14 +617,15 @@ class TaggingApp(object):
 			cache_filename = self.image_processor.cache_filename(filename, filter)
 
 			if os.path.isfile(cache_filename):
-				return send_file(cache_filename)
+				img = cv2.imread(cache_filename)
+				assert img is not None
+			else:
+				img = self.image_processor.process_image(filename, filter)
+				assert img is not None
+				if request.args.get('cache_result'):
+					cv2.imwrite(cache_filename, img)
 
-			img = self.image_processor.process_image(filename, filter)
-			assert img is not None
-
-			if request.args.get('cache_result'):
-				cv2.imwrite(cache_filename, img)
-
+			img = self.image_processor.pre_render_processing(img)
 			return image_response(img)
 
 		@self.app.route('/random-image')
