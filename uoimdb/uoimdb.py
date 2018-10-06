@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import multiprocessing as mp
+from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 import matplotlib.cm
 
 from . import utils
@@ -244,14 +246,20 @@ class uoimdb(object):
 
     
 
-    def _load_images(self, srcs, pool=None, out_srcs=None, close=None, refresh=False):
-        if pool is not None:
+    def _load_images(self, srcs, pool=None, thread_pool=None, out_srcs=None, close=None, refresh=False):
+        if pool is not None or thread_pool is not None:
             srcs = pd.Series(srcs)
             missing = (pd.isnull(self.df.loc[srcs, 'im']).reset_index(drop=True) 
                        if not refresh else np.ones(len(srcs)).astype(bool))
             missing_files = srcs[missing].apply(self.src_to_path)
             
             if len(missing_files):
+                if thread_pool: # can use threads instead of processes
+                    pool = thread_pool
+                    pool_class = ThreadPool
+                else:
+                    pool_class = Pool
+                    
                 if pool is True:
                     pool = len(srcs) # default 1 process per file
                     
@@ -259,10 +267,9 @@ class uoimdb(object):
                     close = isinstance(pool, int) # close if we created it
                     
                 if isinstance(pool, int): # pool is the number of processes
-                    pool = mp.Pool(min(pool, self.cfg.MAX_PROCESSES)) # mp.Pool(pool) 
-
-                print('{} images total. {} missing. {} workers. {} cpus total.'.format(
-                    len(srcs), len(missing_files), pool._processes, mp.cpu_count()))
+                    pool = pool_class(min(pool, self.cfg.MAX_PROCESSES)) # mp.Pool(pool) 
+                    print('{} images total. {} missing. {} workers. {} cpus total.'.format(
+                        len(srcs), len(missing_files), pool._processes, mp.cpu_count()))
                 
                 queue = pool.imap(load_image_worker, missing_files, chunksize=5)
                 for im in self._iter_images(srcs, queue=queue, out_srcs=out_srcs, refresh=refresh):
@@ -397,7 +404,7 @@ class Pipeline(object):
           
     '''
     
-    def __init__(self, imdb, **kw):
+    def __init__(self, imdb, pool=None, **kw):
         self.srcs = [] # the loaded filenames
         self.pipeline = [] # the pipeline of generators
         self.box_transforms = [] # transforms to apply to bounding boxes
@@ -592,6 +599,26 @@ class Pipeline(object):
             return im[crop_y, crop_x]
         return self.pipe(f, box_transform=box_transform)
     
+    
+    def fake_crop(self, x1=None, x2=None, y1=None, y2=None, fill=0):
+        '''Fake crop the images. (black out)
+        Arguments:
+            x1, x2, y1, y2 (float): The percentage of the image to crop off. The full image would be:
+                x1, x2, y1, y2 = 0, 0, 1, 1
+        '''
+        if x1 is None and x2 is None and y1 is None and y2 is None:
+            x1, y1, x2, y2 = self.cfg.CROP.X1, self.cfg.CROP.Y1, self.cfg.CROP.X2, self.cfg.CROP.Y2
+        x1, y1, x2, y2 = x1 or 0, y1 or 0, x2 or 1, y2 or 1
+
+        def f(im):
+            h, w = im.shape[:2]
+            im[:,:int(w*x1)] = fill
+            im[:,int(w*x2):] = fill
+            im[:int(h*y1),:] = fill
+            im[int(h*y2):,:] = fill
+            return im
+        return self.pipe(f)
+    
 
     def color_convert(self, color_conv):
         '''Convert the color space of the images. 
@@ -651,7 +678,7 @@ class Pipeline(object):
         return self.pipe(lambda im: im.astype(dtype))
     
 
-    def bgsub(self, window=None):
+    def bgsub(self, window=None, mode='full'):
         '''Performs basic background subtraction. 
         Arguments:
             window (int): The size of the background subtraction window. Window is equal on each side (left-heavy for even-sized windows).
@@ -660,10 +687,10 @@ class Pipeline(object):
         '''
         if window is None:
             window = self.cfg.BG.WINDOW
-        return self.pipe(consecutive_bgsub, full=True, window=window)
+        return self.pipe(consecutive_bgsub, full=True, window=window, mode=mode)
     
 
-    def bgsub2(self, window=None, cmap=None):
+    def bgsub2(self, cmap=None, **kw):
         '''Performs fancy background subtraction. Includes the full pipeline:
             convert to greyscale
             blur for translation invariance
@@ -680,14 +707,12 @@ class Pipeline(object):
         Returns:
             Pipe returns iterable of background subtracted images.
         '''
-        if window is None:
-            window = self.cfg.BG.WINDOW
         if cmap is None:
             cmap = self.cfg.BG.CMAP
-
+        
         (self.grey()
              .blur()
-             .bgsub(window=window)
+             .bgsub(**kw)
              .blur()
              .scale()
              .clip()
@@ -858,23 +883,43 @@ class Pipeline(object):
                 idx = self.imdb.src_to_idx(src)
                 yield im.view(utils.metaArray).set_meta(i=i, src=src, idx=idx, **kw)
         return self.pipe(f, full=True)
-
-    def timer(self, every=1):
+    
+    
+    def timer(self, every=1, label=''):
         '''Prints execution time'''
+        if label:
+            label = '{}: '.format(label)
         def timer(imgs):
-            t = time.time()
             buf = []
+            t = time.time()
             for i, _ in enumerate(imgs):
+                dt = time.time() - t
                 if every and i and not i % every:
-                    print('Time since last: {}. Avg iteration time: {}+-{} (2std). Total time: {}.'.format(np.sum(buf[-every]), np.mean(buf[-every:]), np.std(buf[-every:]), np.sum(buf)))
+                    print('{}Images {}-{}. '
+                          'Iteration Time: Avg={:.2f}±{:.2f}s(2sd), '
+                              'Min={:.2f}s, Max={:.2f}s, Sum={:.2f}s. '
+                          'Total Elapsed: {:.2f}s.'.format(label, i - every, i, 
+                        np.mean(buf[-every:]), 
+                        2*np.std(buf[-every:]), 
+                        np.min(buf[-every:]), 
+                        np.max(buf[-every:]), 
+                        np.sum(buf[-every:]), 
+                        np.sum(buf) ))
                 yield _
-                buff.append(time.time() - t)
+                buf.append(dt)
                 t = time.time()
-            print('Total Time: {}. Average Time: {}+-{} (2std).'.format(np.sum(buf), np.mean(buf), np.std(buf)))
+            print('{} Images. Total Elapsed Time: {:.2f}. '
+                  'Iteration Time: Avg={:.2f}±{:.2f}s(2sd), '
+                      'Min={:.2f}s, Max={:.2f}s.'.format(i+1, 
+                np.sum(buf), 
+                np.mean(buf), 
+                2*np.std(buf),
+                np.min(buf), 
+                np.max(buf) ))
 
         return self.pipe(timer, full=True)
-
-
+    
+    
     def progress(self, every=1):
         '''Prints the iteration number.
         Arguments:
@@ -971,22 +1016,28 @@ def disjoint_bgsub(img, imgs, method='mean'):
     return sub
 
     
-def consecutive_bgsub(frames, window):
+def consecutive_bgsub(frames, window, mode='full'):
     '''Performs an optimized version of background subtraction where it is assumed that the images are consecutive.'''
-    center, window_right = window # _____,_,_____
-    center += 1 # shift one to include the center frame. 
-    frames = (frame.astype(float) for frame in frames) # convert to float or everything goes to shit *-*
-    buffer = utils.npBuffer([frame for _, frame in zip(range(center + window_right), frames)]) # initialize the buffer
+    assert mode in ('full', 'valid')
     
-    for i in range(center): # start at left edge, i = 0 -> center
+    window_left, window_right = window # _____,_,_____
+    frames = (frame.astype(float) for frame in frames) # convert to float or everything goes to shit *-*
+    buffer = utils.npBuffer([frame for _, frame in zip(range(window_left + 1 + window_right), frames)]) # initialize the buffer
+        
+    if mode == 'full':
+        for i in range(window_left + 1): # start at left edge, i = 0 -> center
+            yield np.abs(buffer.at(i) - buffer.mean_)
+    else:
+        i = window_left
         yield np.abs(buffer[i] - buffer.mean_)
     
     for new_frame in frames: # i == center
         buffer.append(new_frame) # store new image
-        yield np.abs(buffer[i] - buffer.mean_)
+        yield np.abs(buffer.at(i) - buffer.mean_)
     
-    for i in range(center, len(buffer)): # we've hit the right edge, finish up. i = center -> window_size - 1
-        yield np.abs(buffer[i] - buffer.mean_)
+    if mode == 'full':
+        for i in range(window_left + 1, len(buffer)): # we've hit the right edge, finish up. i = center -> window_size - 1
+            yield np.abs(buffer.at(i) - buffer.mean_)
 
 
 def draw_dets_cv(im, boxes=None, text_color=(0,0,0)):
