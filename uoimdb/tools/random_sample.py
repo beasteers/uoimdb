@@ -72,7 +72,8 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--filter', help='the image filter to use. Can be {}'.format(
         '|'.join(['"'+f+'"' for f in image_processor.filters.keys()])), default='Background Subtraction (mean)')
     parser.add_argument('--timer', help='After how many images should we print out the time statistics.', default=10)
-    parser.add_argument('-n', help='Cache the first n images. Useful for testing.', default=None)
+    parser.add_argument('-w', '--window', help='Also cache images surrounding the sample images.', default='')
+    parser.add_argument('-n', help='Cache the first n images. Useful for testing.', default=None, type=int)
     args = parser.parse_args()
 
     if args.action == 'create':
@@ -82,7 +83,8 @@ if __name__ == '__main__':
         delete_sample(args.sample)
 
     elif args.action == 'cache':
-        cache_images(args.sample, filter=args.filter, timer_every=args.timer, n=args.n)
+        if args.window
+        cache_images(args.sample, filter=args.filter, timer_every=args.timer, n=args.n, window=window)
 
     elif args.action == 'list':
         gather_random_sample_srcs(args.sample)
