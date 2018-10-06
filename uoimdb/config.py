@@ -80,6 +80,8 @@ def get_config(filename=None):
 
 		cfg.IMAGE_DIR = base_dir
 
+		
+	cfg.IMAGE_CACHE_LOCATION = os.path.join(cfg.DATA_LOCATION, cfg.IMAGE_CACHE_LOCATION)
 
 	loaded_configs[filename] = cfg
 	return cfg

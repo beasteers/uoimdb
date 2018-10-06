@@ -49,8 +49,8 @@ function getBoxes() { // used in /save
 }
 
 window.img_meta = {};
-function setCurrentImageMeta(key, value, message=false) {
-	var src = video_data[video_cursor].src;
+function setImageMeta(key, value, message=false, i=null) {
+	var src = video_data[i != null ? i : video_cursor].src;
 	if(!img_meta[src]) {
 		img_meta[src] = {}
 	}
@@ -86,18 +86,11 @@ var fastforward = nav.select('#fastforward').on('click', function(){
     updateVideoPosition(config.FASTFORWARD_STEP);
 });
 
-var unlabeled_objects = nav.select('#unlabeled-objects').on('click', function(){
-	setCurrentImageMeta('status', 'has unlabeled objects', true);
+var mark_unreviewed = nav.select('#mark-unreviewed').on('click', function(){
+	setImageMeta('status', 'unreviewed', true);
+	var nodes = row.selectAll('.image-cell').nodes();
+	d3.select(nodes[nodes.length - 1]).select('.status').text('unreviewed');
 });
-
-var no_objects = nav.select('#no-objects').on('click', function(){
-    setCurrentImageMeta('status', 'no objects', true);
-});
-
-var no_objects = nav.select('#no-objects').on('click', function(){
-    setCurrentImageMeta('status', 'no objects', true);
-});
-
 
 
 /*
@@ -133,14 +126,11 @@ d3.select('body').on('keydown.step-forward', function(){
     	updateVideoPosition(config.FORWARD_STEP);
 })
 
-d3.select('body').on('keydown.unlabeled-objects', function(){
-    if(d3.event.keyCode == config.KEYS.HAS_UNLABELED_OBJECTS) 
-    	nav.select('#unlabeled-objects').dispatch('click');
+d3.select('body').on('keydown.mark-unreviewed', function(){
+    if(d3.event.keyCode == config.KEYS.MARK_UNREVIEWED) 
+    	nav.select('#mark-unreviewed').dispatch('click');
 })
-d3.select('body').on('keydown.no-objects', function(){
-    if(d3.event.keyCode == config.KEYS.HAS_NO_OBJECTS) 
-    	nav.select('#no-objects').dispatch('click');
-})
+
 
 d3.select('body').on('keydown.draw-ghostboxes', function(){
     if(d3.event.keyCode == config.KEYS.DRAW_GHOSTBOXES){
@@ -244,14 +234,14 @@ function drawTimeline(data) {
 	label_markers.exit().remove();
 
 	
-	var pos = parseInt(get_hash()[1]) || 0;
+	window.video_cursor = parseInt(get_hash()[1]) || 0;
 	if(data.i_center != null) {
-		pos = data.i_center;
-	}
-	window.video_cursor = pos;
+		window.video_cursor = data.i_center;
+		setImageMeta('status', 'reviewed');
+	}	
 
-	set_hash(pos, 1);
-	updateVideoPosition(0, 0, 0);
+	set_hash(window.video_cursor, 1);
+	updateVideoPosition(0);
 }
 
 
@@ -278,8 +268,8 @@ function updateVideoPosition(i, preload_n, preload_n_prev) {
 	window.frameRequested = true;
 	window.video_cursor = i;
 	var imgs_data = video_data.slice(
-		Math.max(i - (preload_n_prev || config.PRELOAD_N_PREV_IMAGES), 0), 
-		Math.min(i + (preload_n || config.PRELOAD_N_IMAGES), video_data.length)
+		Math.max(i - (preload_n_prev != null ? preload_n_prev : config.PRELOAD_N_PREV_IMAGES), 0), 
+		Math.min(i + (preload_n != null ? preload_n : config.PRELOAD_N_IMAGES), video_data.length)
 	);
 	preloadImages(imgs_data.map((d) => d.src));
 	imageArrived(); // check if first image is already loaded

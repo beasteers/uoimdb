@@ -4,8 +4,11 @@ function loadImagesFromQuery(query) {
 	console.log('Getting images from: ', query);
 	$.get( query )
 	.done(function(data) {
+		console.log(5);
 		console.log(data);
 		drawTimeline(data);
+	}).fail(function(data){
+		console.log(data);
 	});
 }
 
@@ -127,7 +130,7 @@ function preloadImages(images) {
 				this.isLoaded = true;
 				imageArrived(src); // update once the current image is loaded
 			};
-			img.src = url;
+			img.src = url + (config.CACHE_ALL_IMAGES ? '?cache_result=1' : '');
 			o[src] = img;
 		}
 		return o;
@@ -150,11 +153,11 @@ function updateImages(images) {
 	cell.selectAll('.pt').classed('selected', false);
    
     // add wrapper for image and points
-    cell_new = cell.enter().append('div').attr('class', 'image-cell'); // the bootstrap column cell
+    cell_new = cell.enter().append('div').attr('class', 'image-cell').attr('data-src', (d) => d.src); // the bootstrap column cell
 
     // add title
     cell_new.append('div').attr('class', 'title')
-        .html((d) => `${d.src} -- <b>${d.date}<b>`);
+        .html((d) => `${d.src} -- <b>${d.date}<b> -- <span class="status">${d.status}</span>`);
 
     // draw image
     var images = cell_new.append('div').attr('class', 'image-container') // a wrapper to contain image + annotations
@@ -415,7 +418,7 @@ function saveBoxes(){
 	})
 	.done(function(data) {
 		console.log(data);
-		displayMessage('Saved &#128077;');
+		displayMessage(data.message);
 		window.edited_data = {};
 	});
 }
@@ -437,6 +440,7 @@ function saveBoxes(){
 window.addEventListener("beforeunload", function (e) {
 	var n_labels = Object.keys(window.edited_data).length;
 	var n_metas = Object.keys(window.img_meta).length;
+	console.log(n_labels, n_metas);
     if (!n_labels && !n_metas) return;
 
     if(config.AUTOSAVE) {

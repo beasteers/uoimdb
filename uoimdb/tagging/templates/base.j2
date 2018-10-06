@@ -36,6 +36,8 @@
     var config = {{ config|tojson }};
 		var BASE_URL = config.BASE_URL;
     var CURRENT_USER = '{{ current_user }}';
+
+    console.log(config);
 	</script>
   	{% block scripts %}{% endblock %}
   </body>

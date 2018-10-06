@@ -8,6 +8,7 @@ DATA_LOCATION: data # where the imdb cache and labels are stored
 LABELS_FILE: labels.csv # csv of the gathered labels (from the app)
 IMAGE_BASE_DIR: images # the common directory which all images are stored under
 IMAGE_FILE_PATTERN: '*' # the glob file pattern for getting all images. relative to IMAGE_DIR
+IMAGE_CACHE_LOCATION: image_cache # defaults to DATA_LOCATION/image_cache. use absolute path for locations outside DATA_LOCATION.
 
 # in case you want to keep the image location secret, you can store it in either one of these
 IMAGE_BASE_DIR_ENVVAR: UOIMAGES_DIR # an environmental variable
@@ -34,7 +35,7 @@ IMAGE_OUTPUT_DIR: output_images # the root directory where images and gifs are s
 TIME_GAP: 15 # seconds
 DISTANCE_FROM_GAP: 10 
 FILTER_TIME_RANGE: [5, 18] # between what hours should we filter by
-SAMPLE_WINDOW: [5, 5] # how many images to get on either side of a random sample
+SAMPLE_WINDOW: [3, 3] # how many images to get on either side of a random sample
 SAMPLE_SIZE: 1000 # the default random sample size
 
 #############################
@@ -74,8 +75,8 @@ APP_RUN: # arguments to pass to app.run(...)
   threaded: True
 
 SECRET_KEY: 'xxxxxxxxxxxxx-shhh-xxxxxxxxxxxxxxxxxxxx' # flask app secret key
-USERS: 
-  admin: admin
+USERS: {}
+  # username: password
 
 
 
@@ -96,7 +97,7 @@ APP_TITLE: UO Tagger # white label cuz why not!
 
 DATE_FORMAT: '%Y-%m-%d' # used for urls
 DATETIME_FORMAT: '%Y-%m-%d %H:%M:%S' 
-
+CACHE_ALL_IMAGES: false # will cache every image loaded through the app to IMAGE_CACHE_LOCATION
 
 # frontend
 
@@ -164,6 +165,8 @@ KEYS:
   SELECT_ALL: 65 # cmd-A || ctl-A, select/deselect boxes
   DELETE_SELECTED: 8 # cmd-Delete || ctl-Delete, delete selected boxes
   TOGGLE_ORIGINAL: 38 # up arrow, toggles between last chosen filter and original image
+
+  MARK_UNREVIEWED: 85 # cmd-U || ctl-U, mark current image as unreviewed
 
   PREV_PAGE: 37 # shift-left arrow, go to previous page
   NEXT_PAGE: 39 # shift-right arrow, go to next page

@@ -24,6 +24,9 @@ class ImageProcessor(object):
 			('Edge Preserving', imdb.pipeline().pipe(lambda im: cv2.edgePreservingFilter(im, flags=1, sigma_s=30, sigma_r=0.4))),
 		])
 
+		for name in self.filters:
+			self.filters[name].fake_crop()
+
 
 	def process_image(self, filename, filter=None):
 		filter = filter or 'Original'
@@ -34,15 +37,12 @@ class ImageProcessor(object):
 		img = self.filters[filter].feed(src=filename).first()
 
 		# convert from rgb2bgr for opencv
-		if len(img.shape) > 2:
-			img = img[:,:,::-1]
-
-		# fake cropping. blacking out outside the crop. this lets us keep the original aspect ratio/label positioning
-		y, x = img.shape[:2]
-		if self.imdb.cfg.CROP.Y1:
-			img[:int(y*self.imdb.cfg.CROP.Y1),:] = 0
-		if self.imdb.cfg.CROP.Y2:
-			img[int(y*self.imdb.cfg.CROP.Y2):,:] = 0
+		if len(img.shape) < 3:
+			pass
+		elif img.shape[2] == 3:
+			img = cv2.convColor(img, cv2.COLOR_RGB2BGR)
+		elif img.shape[2] == 4:
+			img = cv2.convColor(img, cv2.COLOR_RGBA2BGRA)
 
 		return img
 

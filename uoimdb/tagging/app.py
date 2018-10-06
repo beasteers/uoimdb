@@ -13,7 +13,7 @@ from datetime import datetime
 from filelock import FileLock
 
 from flask import Flask, Blueprint
-from flask import request, render_template, jsonify, make_response, url_for, redirect, flash, abort
+from flask import request, render_template, jsonify, make_response, send_file, url_for, redirect, flash, abort
 import flask_login
 import jinja2
 
@@ -80,6 +80,7 @@ class TaggingApp(object):
 
 		# performs the image processing
 		self.image_processor = image_processor_class(self.imdb)
+		utils.ensure_dir(self.cfg.IMAGE_CACHE_LOCATION)
 
 		# used for finding consecutive days
 		self.dates_list = list(np.sort(np.unique(self.imdb.df.date.dt.strftime(cfg.DATE_FORMAT))))
@@ -264,6 +265,8 @@ class TaggingApp(object):
 			df = df[[c for c in df.columns if c.startswith(user_col(''))] + 
 					[c for c in df.columns if not c.startswith(user_col(''))]]
 			
+			df.insert(0, 'date', self.imdb.df.loc[df.index].date)
+
 			# link to image page
 			df = df.reset_index()
 			df.src = [
@@ -368,7 +371,7 @@ class TaggingApp(object):
 			if name in self.random_samples and i < len(self.random_samples[name]):
 				src = self.random_samples[name].index[i]
 				if not self.random_samples[name].loc[src, user_col('status')]:
-					self.random_samples[name].loc[src, user_col('status')] = 'viewed'
+					self.random_samples[name].loc[src, user_col('status')] = 'reviewed'
 
 				return render_template('video.j2', title='Random', sample_name=name,
 					query=url_for('get_images', sample_name=name, sample_index=i),
@@ -389,7 +392,7 @@ class TaggingApp(object):
 
 
 	def load_random_sample(self, filename):
-		df = pd.read_csv(filename, index_col='src')
+		df = pd.read_csv(filename, index_col='src').fillna('')
 
 		name = os.path.splitext(os.path.basename(filename))[0]
 
@@ -456,7 +459,7 @@ class TaggingApp(object):
 
 				self.save_user_random_sample(name)
 
-			return jsonify({'message': 'Saved!', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
+			return jsonify({'message': 'Saved! &#128077;', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
 
 		@self.app.route('/save/meta/', methods=['POST'])
 		@flask_login.login_required
@@ -520,7 +523,7 @@ class TaggingApp(object):
 			if sample_name:
 				sample = self.random_samples[sample_name]
 				if sample_index is None:
-					sample_index = np.where(sample.views == 0)[0]
+					sample_index = np.where(sample[user_col('status')] != 'reviewed')[0]
 				else:
 					sample_index = int(sample_index)
 				src = sample.index[sample_index]
@@ -556,6 +559,13 @@ class TaggingApp(object):
 					df = df.iloc[i - lwindow:i + 1 + rwindow]
 					i_center = lwindow
 
+			if sample_name:
+				common_idx = df.index.intersection(sample.index)
+				for c in sample.columns:
+					if c.startswith(user_col('')):
+						df.loc[common_idx, remove_user_col(c)] = sample.loc[common_idx, c]
+
+
 			# for all filtered images, get bounding boxes
 			timeline = self.get_boxes_for_imgs(df)
 			timeline.date = timeline.date.dt.strftime(self.cfg.DATETIME_FORMAT) # make json serializable
@@ -586,7 +596,7 @@ class TaggingApp(object):
 
 
 			return jsonify(dict(
-				timeline=timeline.to_dict(orient='records'),
+				timeline=timeline.fillna('').to_dict(orient='records'),
 				prev_query=url_for('get_images', **prev_query) if prev_query else None, 
 				next_query=url_for('get_images', **next_query) if next_query else None, 
 				i_center=i_center))
@@ -604,9 +614,16 @@ class TaggingApp(object):
 		@self.app.route('/filter/<filter>/<path:filename>')
 		@flask_login.login_required
 		def filtered_image(filter, filename):
+			cache_filename = os.path.realpath(os.path.join(self.cfg.IMAGE_CACHE_LOCATION, '{},{}'.format(filter, filename)))
+
+			if os.path.isfile(cache_filename):
+				return send_file(cache_filename)
+
 			img = self.image_processor.process_image(filename, filter)
-			if img is None:
-				img = np.array([]) # empty image
+			assert img is not None
+
+			if request.args.get('cache_result'):
+				cv2.imwrite(cache_filename, img)
 
 			return image_response(img)
 
@@ -716,6 +733,10 @@ def user_col(col, user=None):
 	'''Gets the name of a user specific column'''
 	user = user or flask_login.current_user.get_id()
 	return '{}|{}'.format(user, col)
+
+def remove_user_col(col):
+	'''Gets the name of a user specific column'''
+	return col.split('|')[-1]
 
 def image_response(output_img, ext='.png'):
 	'''Converts opencv image to a flask response.'''
