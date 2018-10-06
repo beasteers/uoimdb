@@ -13,9 +13,12 @@ image_processor = ImageProcessor(imdb)
 random_sample_dir = os.path.join(imdb.cfg.DATA_LOCATION, 'random_samples')
 
 
-def cache_images(sample, filter, timer_every=50, n=None):
+def cache_images(sample, filter, timer_every=50, window=None, n=None):
     # load a list of all srcs referenced in the specified random samples    
-    sample_srcs = gather_random_sample_srcs(sample)    
+    sample_srcs = gather_random_sample_srcs(sample, window)    
+
+    # order images by date for more efficient loading
+    sample_srcs = imdb.df.date[sample_srcs].sort_values().index
     
     # export each image, skipping ones that exist already
     print('Saving images to {}... {} cached images exist there currently.'.format(
@@ -52,7 +55,7 @@ def create_sample(sample):
     pass
 
 
-def gather_random_sample_srcs(sample):
+def gather_random_sample_srcs(sample, window=None):
     sample_srcs = []
     for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(sample))):
         idx = pd.read_csv(f, index_col='src').index
@@ -61,6 +64,13 @@ def gather_random_sample_srcs(sample):
 
     sample_srcs = np.unique(np.concatenate(sample_srcs))
     print('In total, {} unique srcs from random samples matching "{}".'.format(len(sample_srcs), sample))
+
+    if window:
+        sample_srcs = np.unique(np.concatenate([
+            imdb.around_src(src, window)
+            for src in sample_srcs
+        ]))
+        print('Including a window of {}, {} unique srcs.'.format(window, len(sample_srcs), sample))
     return sample_srcs
 
 
@@ -72,9 +82,16 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--filter', help='the image filter to use. Can be {}'.format(
         '|'.join(['"'+f+'"' for f in image_processor.filters.keys()])), default='Background Subtraction (mean)')
     parser.add_argument('--timer', help='After how many images should we print out the time statistics.', default=10)
-    parser.add_argument('-w', '--window', help='Also cache images surrounding the sample images.', default='')
+    parser.add_argument('-w', '--window', help='Also cache images surrounding the sample images.', nargs='?', default=None, const=imdb.cfg.SAMPLE_WINDOW)
     parser.add_argument('-n', help='Cache the first n images. Useful for testing.', default=None, type=int)
     args = parser.parse_args()
+
+    try:
+        window = [int(w) for w in args.window.split(',')]
+        if len(window) == 1:
+            window = (window[0], window[0])
+    except Exception:
+        window = args.window
 
     if args.action == 'create':
         raise NotImplementedError('Not implemented yet. sorry. Use the tagging app API for the time being.')
@@ -83,11 +100,10 @@ if __name__ == '__main__':
         delete_sample(args.sample)
 
     elif args.action == 'cache':
-        if args.window
         cache_images(args.sample, filter=args.filter, timer_every=args.timer, n=args.n, window=window)
 
     elif args.action == 'list':
-        gather_random_sample_srcs(args.sample)
+        gather_random_sample_srcs(args.sample, window=window)
 
     else:
         raise ValueError('Action not found.')
