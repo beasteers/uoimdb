@@ -92,19 +92,33 @@ Custom Data Structures
 '''
 
     
+# class npBuffer(np.ndarray):
+#     '''Like a deque but for numpy arrays. Stores a rolling mean of the buffer.'''
+#     def __new__(cls, arr, calc_mean=True):
+#         arr = np.asarray(arr).view(cls)
+#         arr.mean_ = np.mean(arr, axis=0) if calc_mean else None
+#         return arr
+        
+#     def append(self, value):
+#         if self.mean_ is not None:
+#             self.mean_ += (value - self[0]) / len(self)
+#         self[:-1] = self[1:]
+#         self[-1] = value
+
 class npBuffer(np.ndarray):
     '''Like a deque but for numpy arrays. Stores a rolling mean of the buffer.'''
     def __new__(cls, arr, calc_mean=True):
         arr = np.asarray(arr).view(cls)
         arr.mean_ = np.mean(arr, axis=0) if calc_mean else None
+        arr.i0_ = 0
         return arr
         
     def append(self, value):
         if self.mean_ is not None:
-            self.mean_ += (value - self[0]) / len(self)
-        self[:-1] = self[1:]
-        self[-1] = value
-        
+            self.mean_ += (value - self[self.i0_]) / len(self)
+        self[self.i0_] = value
+        self.i0_ = (self.i0_ + 1) % len(self)
+
 
 class metaArray(np.ndarray):
     '''Stores meta data in a numpy array'''
