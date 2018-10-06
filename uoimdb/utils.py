@@ -112,6 +112,9 @@ class npBuffer(np.ndarray):
         arr.mean_ = np.mean(arr, axis=0) if calc_mean else None
         arr.i0_ = 0
         return arr
+    
+    def at(self, i):
+        return self[(i + self.i0_) % len(self)]
         
     def append(self, value):
         if self.mean_ is not None:
@@ -222,8 +225,7 @@ def parse_freq(freq):
         
         
         
-  
-
+        
 def ensure_dir(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
