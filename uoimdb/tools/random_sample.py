@@ -15,15 +15,7 @@ random_sample_dir = os.path.join(imdb.cfg.DATA_LOCATION, 'random_samples')
 
 def cache_images(sample, filter, timer_every):
     # load a list of all srcs referenced in the specified random samples    
-    sample_srcs = []
-    for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(sample))):
-        idx = pd.read_csv(f, index_col='src').index
-        sample_srcs.append(idx)
-        print('{} srcs from {}.'.format(len(idx), f))
-
-    sample_srcs = np.unique(np.concatenate(sample_srcs))
-    print('Gathered {} unique srcs from random samples matching "{}".'.format(len(sample_srcs), sample))
-    
+    sample_srcs = gather_random_sample_srcs(sample)    
     
     # export each image, skipping ones that exist already
     print('Saving images to {}... {} cached images exist there currently.'.format(
@@ -47,7 +39,7 @@ def cache_images(sample, filter, timer_every):
 
 
 def delete_sample(sample):
-    for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(name))):
+    for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(sample))):
         if os.path.isfile(f):
             os.remove(f)
 
@@ -56,25 +48,42 @@ def create_sample(sample):
     pass
 
 
+def gather_random_sample_srcs(sample):
+    sample_srcs = []
+    for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(sample))):
+        idx = pd.read_csv(f, index_col='src').index
+        sample_srcs.append(idx)
+        print('{} srcs from {}.'.format(len(idx), f))
+
+    sample_srcs = np.unique(np.concatenate(sample_srcs))
+    print('In total, {} unique srcs from random samples matching "{}".'.format(len(sample_srcs), sample))
+    return sample_srcs
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='')
-    # parser.add_argument('action', help='create|delete|cache random sample')
-    parser.add_argument('sample', help='the random sample to use. can be a glob pattern (e.g. sample-*).')
+    parser.add_argument('action', help='create|delete|cache random sample')
+    parser.add_argument('sample', help='the random sample to use. can be a glob pattern (e.g. sample-*).', default=None)
     parser.add_argument('-f', '--filter', help='the image filter to use. Can be {}'.format(
         '|'.join(['"'+f+'"' for f in image_processor.filters.keys()])), default='Background Subtraction (mean)')
     parser.add_argument('--timer', help='After how many images should we print out the time statistics.', default=10)
     args = parser.parse_args()
 
-    # if args.action == 'create':
-    #     pass
+    if args.action == 'create':
+        raise NotImplementedError('Not implemented yet. sorry. Use the tagging app API for the time being.')
 
-    # if args.action == 'delete':
-    #     delete_sample(args.sample)
+    elif args.action == 'delete':
+        delete_sample(args.sample)
 
-    # if args.action == 'cache':
-        
-    cache_images(args.sample, filter=args.filter, timer_every=args.timer)
+    elif args.action == 'cache':
+        cache_images(args.sample, filter=args.filter, timer_every=args.timer)
+
+    elif args.action == 'list':
+        gather_random_sample_srcs(args.sample)
+
+    else:
+        raise ValueError('Action not found.')
     
 
 
