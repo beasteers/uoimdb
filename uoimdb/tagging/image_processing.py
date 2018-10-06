@@ -9,10 +9,10 @@ class ImageProcessor(object):
 
 		# all filters
 		self.filters = odict([
-			('Background Subtraction (mean)', imdb.pipeline().use_window().single_bgsub2(method='mean')),
-			('Background Subtraction (median)', imdb.pipeline().use_window().single_bgsub2(method='median')),
-			('Background Subtraction (min)', imdb.pipeline().use_window().single_bgsub2(method='min')),
-			('Background Subtraction (max)', imdb.pipeline().use_window().single_bgsub2(method='mean')),
+			('Background Subtraction (mean)', imdb.pipeline().use_window().single_bgsub3(method='mean')),
+			('Background Subtraction (median)', imdb.pipeline().use_window().single_bgsub3(method='median')),
+			('Background Subtraction (min)', imdb.pipeline().use_window().single_bgsub3(method='min')),
+			('Background Subtraction (max)', imdb.pipeline().use_window().single_bgsub3(method='mean')),
 
 			('Original', imdb.pipeline()),
 			('Greyscale', imdb.pipeline().grey()),
@@ -51,6 +51,9 @@ class ImageProcessor(object):
 
 		return img
 
-	def cache_filename(self, filename, filter):
-		return os.path.realpath(os.path.join(self.imdb.cfg.IMAGE_CACHE_LOCATION, '{},{}'.format(filter, filename)))
+	def cache_filename(self, filename, filter, ext=None):
+		if ext:
+			filename = os.path.splitext(filename)[0] + '.{}'.format(ext)
+		filename = '{},{}'.format(filter.replace('/', ','), self.imdb.src_to_idx(filename))
+		return os.path.realpath(os.path.join(self.imdb.cfg.IMAGE_CACHE_LOCATION, filename))
 

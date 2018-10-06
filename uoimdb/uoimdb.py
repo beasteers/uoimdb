@@ -237,13 +237,13 @@ class uoimdb(object):
         if window is None:
             window = cfg.BG.WINDOW
         i = self.src_to_i(src)
-        return self.around_i(i, window) if i is not None else []
+        return self.around_i(i, window) if i is not None else pd.Index([])
 
     def around_idx(self, idx, window=None):
         if window is None:
             window = cfg.BG.WINDOW
         i = self.idx_to_i(idx)
-        return self.around_i(i, window) if i is not None else []
+        return self.around_i(i, window) if i is not None else pd.Index([])
 
 
     
@@ -751,7 +751,7 @@ class Pipeline(object):
             return disjoint_bgsub(im, bgims, method=method)
         return self.pipe(f, full=True, singleton=True)
 
-    def single_bgsub2(self, method='mean'):
+    def single_bgsub2(self, method='mean', cmap=None):
         '''Performs fancy background subtraction for a single image. Includes the full pipeline:
             convert to greyscale
             blur for translation invariance
@@ -775,12 +775,12 @@ class Pipeline(object):
              .scale()
              .clip()
              .invert()
-             .cmap()
+             .cmap(cmap)
              .astype('uint8'))
         return self
 
 
-    def single_bgsub3(self, method='mean'):
+    def single_bgsub3(self, method='mean', cmap=None):
         '''Performs fancy background subtraction for a single image. Includes the full pipeline:
             convert to greyscale
             ** background subtraction
@@ -800,7 +800,7 @@ class Pipeline(object):
              .scale()
              .clip()
              .invert()
-             .cmap()
+             .cmap(cmap)
              .astype('uint8'))
         return self
     
@@ -891,7 +891,9 @@ class Pipeline(object):
             cmap = self.cfg.BG.CMAP
         if isinstance(cmap, str):
             cmap = mpl.cm.get_cmap(cmap)
-        
+        if not cmap:
+            return self
+
         return self.pipe(lambda im: cmap(im/255.)*255)
 
 
