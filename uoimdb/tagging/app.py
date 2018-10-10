@@ -370,8 +370,8 @@ class TaggingApp(object):
 			'''Display images on a certain day'''
 			if name in self.random_samples and i < len(self.random_samples[name]):
 				src = self.random_samples[name].index[i]
-				if not self.random_samples[name].loc[src, user_col('status')]:
-					self.random_samples[name].loc[src, user_col('status')] = 'reviewed'
+				# if not self.random_samples[name].loc[src, user_col('status')]:
+				# 	self.random_samples[name].loc[src, user_col('status')] = 'reviewed'
 
 				return render_template('video.j2', title='Random', sample_name=name,
 					query=url_for('get_images', sample_name=name, sample_index=i),
@@ -455,19 +455,20 @@ class TaggingApp(object):
 			if name and img_meta:
 				img_meta = json.loads(img_meta)
 				for src, meta in img_meta.items():
-					self.random_samples[name].loc[src, user_col('status')] = meta['status']
+					if 'status' in meta:
+						self.random_samples[name].loc[src, user_col('status')] = meta['status']
 
 				self.save_user_random_sample(name)
 
 			return jsonify({'message': 'Saved! &#128077;', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
 
-		@self.app.route('/save/meta/', methods=['POST'])
-		@flask_login.login_required
-		def save_meta():
-			'''Save image meta (i.e. image view counts)'''
-			# self.imdb.save_meta()
+		# @self.app.route('/save/meta/', methods=['POST'])
+		# @flask_login.login_required
+		# def save_meta():
+		# 	'''Save image meta (i.e. image view counts)'''
+		# 	# self.imdb.save_meta()
 
-			return jsonify({'message': 'Saved metadata!'})
+		# 	return jsonify({'message': 'Saved metadata!'})
 
 
 		@self.app.route('/select-images/')
@@ -599,7 +600,7 @@ class TaggingApp(object):
 				timeline=timeline.fillna('').to_dict(orient='records'),
 				prev_query=url_for('get_images', **prev_query) if prev_query else None, 
 				next_query=url_for('get_images', **next_query) if next_query else None, 
-				i_center=i_center))
+				i_focus=i_center))
 
 
 
@@ -617,7 +618,7 @@ class TaggingApp(object):
 			cache_filename = self.image_processor.cache_filename(filename, filter)
 
 			if os.path.isfile(cache_filename):
-				img = cv2.imread(cache_filename)
+				img = cv2.imread(cache_filename, -1)
 				assert img is not None
 			else:
 				img = self.image_processor.process_image(filename, filter)
@@ -739,7 +740,7 @@ def remove_user_col(col):
 	'''Gets the name of a user specific column'''
 	return col.split('|')[-1]
 
-def image_response(output_img, ext='.png'):
+def image_response(output_img, ext='.jpg'):
 	'''Converts opencv image to a flask response.'''
 	retval, buffer = cv2.imencode(ext, output_img)
 	return make_response(buffer.tobytes())

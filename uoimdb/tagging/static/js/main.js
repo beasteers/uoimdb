@@ -157,7 +157,7 @@ function updateImages(images) {
 
     // add title
     cell_new.append('div').attr('class', 'title')
-        .html((d) => `${d.src} -- <b>${d.date}<b> -- <span class="status">${d.status}</span>`);
+        .html((d) => `${d.src} -- <b>${d.date}<b>`);// -- <span class="status">${printStatus(d.status)}</span>
 
     // draw image
     var images = cell_new.append('div').attr('class', 'image-container') // a wrapper to contain image + annotations
@@ -211,6 +211,17 @@ function updateImages(images) {
 }
 
 
+function printStatus(status) {
+	if(!status) {
+		return 'reviewing';
+	}
+	else if(status == 'reviewed'){
+		return 'already reviewed.'
+	}
+	else {
+		return status;
+	}
+}
 
 
 /*

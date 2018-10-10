@@ -9,33 +9,6 @@ import uoimdb as uo
 from uoimdb.tagging.image_processing import ImageProcessor
 
 
-# class CachingImageProcessor(ImageProcessor):
-#     def __init__(self, imdb):
-#         self.imdb = imdb
-
-#         # all filters
-#         self.filters = odict([
-#             ('Background Subtraction (mean)', imdb.pipeline().use_window().single_bgsub3(method='mean', cmap=None)),
-#             ('Background Subtraction (median)', imdb.pipeline().use_window().single_bgsub3(method='median', cmap=None)),
-#             ('Background Subtraction (min)', imdb.pipeline().use_window().single_bgsub3(method='min', cmap=None)),
-#             ('Background Subtraction (max)', imdb.pipeline().use_window().single_bgsub3(method='mean', cmap=None)),
-
-#             ('Original', imdb.pipeline()),
-#             ('Greyscale', imdb.pipeline().grey()),
-#             ('Edges', imdb.pipeline().grey().pipe(lambda im: cv2.Laplacian(im,cv2.CV_64F)).invert()),
-
-#             # https://www.learnopencv.com/non-photorealistic-rendering-using-opencv-python-c/
-#             ('Stylization', imdb.pipeline().pipe(lambda im: cv2.stylization(im, sigma_s=10, sigma_r=0.4))),
-#             ('Pencil Sketch', imdb.pipeline().pipe(lambda im: cv2.pencilSketch(im, sigma_s=10, sigma_r=0.1, shade_factor=0.02)[1])),
-#             ('Detail Enhance', imdb.pipeline().pipe(lambda im: cv2.detailEnhance(im, sigma_s=20, sigma_r=0.15))),
-#             ('Edge Preserving', imdb.pipeline().pipe(lambda im: cv2.edgePreservingFilter(im, flags=1, sigma_s=30, sigma_r=0.4))),
-#         ])
-
-#         for name in self.filters:
-#             self.filters[name].fake_crop()
-
-
-
 # load image database
 imdb = uo.uoimdb()
 image_processor = ImageProcessor(imdb)
@@ -67,7 +40,6 @@ def cache_images(sample, filter, timer_every=50, window=None, n=None, recompute=
             if img is None:
                 print('Failed creating {}.'.format(cache_filename))
             else: 
-                print(cache_filename, img.shape)
                 cv2.imwrite(cache_filename, img)
 
     print('Done. {} now contains {} images.'.format(
@@ -125,7 +97,7 @@ if __name__ == '__main__':
         window = args.window
 
     if args.action == 'create':
-        raise NotImplementedError('Not implemented yet. sorry. Use the tagging app API for the time being.')
+        raise NotImplementedError('Not implemented yet. sorry. Use the tagging app API (/random/<name>/create/) for the time being.')
 
     elif args.action == 'delete':
         delete_sample(args.sample)

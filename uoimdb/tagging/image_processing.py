@@ -50,20 +50,28 @@ class ImageProcessor(object):
 		return img
 
 
-    def pre_render_processing(self, img):
-        '''Runs image processing that runs on both on-the-fly images and cached images'''
-        if len(img.shape < 3):
-            cmap = imdb.cfg.ON_RENDER_CMAP
-            if cmap is True:
-                cmap = imdb.cfg.BG.CMAP
-            if cmap:
-                cmap = mpl.cm.get_cmap(cmap)
-                img = (cmap(img/255.)*255).astype('uint8')
+	def pre_render_processing(self, img, cmap=None, downsample=None):
+		'''Runs image processing that runs on both on-the-fly images and cached images'''
+		if len(img.shape) < 3:
+			if cmap is None or cmap is True:
+				cmap = self.imdb.cfg.ON_RENDER_CMAP
+			if cmap is True:
+				cmap = self.imdb.cfg.BG.CMAP
+			if cmap:
+				cmap = mpl.cm.get_cmap(cmap)
+				img = (cmap(img/255.)*255).astype('uint8')
+				img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
 
+		if downsample is None or downsample is True:
+			downsample = self.imdb.cfg.ON_RENDER_DOWNSAMPLE
+		if downsample is True:
+			downsample = self.imdb.cfg.DOWNSAMPLE
+		if downsample:
+			scale = self.imdb.cfg.ON_RENDER_DOWNSAMPLE
+			print(scale)
+			img = img[::scale, ::scale]
 
-        if imdb.cfg.ON_RENDER_DOWNSAMPLE:
-            scale = imdb.cfg.ON_RENDER_DOWNSAMPLE
-            img = img[::scale, ::scale]
+		return img
 
 
 	def cache_filename(self, filename, filter, ext=None):

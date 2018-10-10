@@ -87,7 +87,7 @@ var fastforward = nav.select('#fastforward').on('click', function(){
 });
 
 var mark_unreviewed = nav.select('#mark-unreviewed').on('click', function(){
-	setImageMeta('status', 'unreviewed', true);
+	setImageMeta('status', '', true);
 	var nodes = row.selectAll('.image-cell').nodes();
 	d3.select(nodes[nodes.length - 1]).select('.status').text('unreviewed');
 });
@@ -183,8 +183,8 @@ function drawTimeline(data) {
 	var dx = (1. / video_data.length)*100;
 	timeline.select('.tl-marker-current').style('width', dx + '%');
 	timeline.select('.tl-marker-center').style('width', dx + '%')
-		.style('display', data.i_center != null ? 'block' : 'none')
-		.style('left', data.i_center != null ? ((data.i_center / video_data.length)*100 + '%') : 0);
+		.style('display', data.i_focus != null ? 'block' : 'none')
+		.style('left', data.i_focus != null ? ((data.i_focus / video_data.length)*100 + '%') : 0);
 
 	d3.select('#prev_query.ajax').attr('href', data.prev_query).classed('d-none', data.prev_query);
 	d3.select('#next_query.ajax').attr('href', data.next_query).classed('d-none', data.next_query);
@@ -235,9 +235,11 @@ function drawTimeline(data) {
 
 	
 	window.video_cursor = parseInt(get_hash()[1]) || 0;
-	if(data.i_center != null) {
-		window.video_cursor = data.i_center;
-		setImageMeta('status', 'reviewed');
+	if(data.i_focus != null) {
+		window.video_cursor = data.i_focus;
+		if(!video_data[video_cursor].status) {
+			setImageMeta('status', 'reviewed');
+		}
 	}	
 
 	set_hash(window.video_cursor, 1);
