@@ -150,6 +150,8 @@ class TaggingApp(object):
 				return
 
 			user.is_authenticated = pwd == self.cfg.USERS[id]
+			if not user.is_authenticated:
+				return
 			return user
 
 		@self.app.route('/login', methods=['GET', 'POST'])
