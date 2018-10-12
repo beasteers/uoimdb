@@ -33,9 +33,9 @@ def cache_images(sample, filter, timer_every=50, window=None, n=None, recompute=
         sample_srcs = sample_srcs[:n]
 
     for src in uo.utils.timer(sample_srcs, every=timer_every, what='loop'):
-        cache_filename = image_processor.cache_filename(src, args.filter, ext='jpg')
+        cache_filename = image_processor.cache_filename(src, filter, ext='jpg')
         if recompute or not os.path.isfile(cache_filename):
-            img = image_processor.process_image(src, args.filter)
+            img = image_processor.process_image(src, filter)
 
             if img is None:
                 print('Failed creating {}.'.format(cache_filename))
