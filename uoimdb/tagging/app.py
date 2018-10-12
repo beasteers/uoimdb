@@ -6,6 +6,7 @@ import os
 import cv2
 import json
 import glob
+import time
 import hashlib
 import numpy as np
 import pandas as pd
@@ -615,18 +616,22 @@ class TaggingApp(object):
 		@self.app.route('/filter/<filter>/<path:filename>')
 		@flask_login.login_required
 		def filtered_image(filter, filename):
+			t = time.time()
 			cache_filename = self.image_processor.cache_filename(filename, filter)
 
 			if os.path.isfile(cache_filename):
 				img = cv2.imread(cache_filename, -1)
 				assert img is not None
+				print('loaded cache', time.time() - t)
 			else:
 				img = self.image_processor.process_image(filename, filter)
 				assert img is not None
+				print('processed', time.time() - t)
 				if request.args.get('cache_result'):
 					cv2.imwrite(cache_filename, img)
 
 			img = self.image_processor.pre_render_processing(img)
+			print(img.shape, 'total time', time.time() - t)
 			return image_response(img)
 
 		@self.app.route('/random-image')

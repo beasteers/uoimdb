@@ -81,7 +81,7 @@ class uoimdb(object):
                 self.pipeline_init = pipeline_init
             elif self.cfg.PIPELINE_INIT: # can disable via config file
                 if self.cfg.DOWNSAMPLE and self.cfg.DOWNSAMPLE != 1:
-                    self.pipeline_init = lambda pipeline: pipeline.bgr2rgb().downsample()
+                    self.pipeline_init = lambda pipeline: pipeline.bgr2rgb().downsample(self.cfg.DOWNSAMPLE)
                 elif self.cfg.RESCALE and self.cfg.RESCALE != 1:
                     self.pipeline_init = lambda pipeline: pipeline.bgr2rgb().resize()
                 else: # rescale is disabled
@@ -780,15 +780,13 @@ class Pipeline(object):
         return self
 
 
-    def single_bgsub3(self, method='mean', cmap=None):
+    def single_bgsub3(self, method='mean'):
         '''Performs fancy background subtraction for a single image. Includes the full pipeline:
             convert to greyscale
             ** background subtraction
             scale up to increase visibility of differences
             clip between 0 and 255 to avoid overflow
             invert so white is static and black represents motion
-            convert to 'bone' cmap so it's prettier
-            convert to uint8 so matplotlib is happy
 
         Arguments:
             window (int): The size of the background subtraction window. Window is equal on each side (left-heavy for even-sized windows).

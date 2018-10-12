@@ -68,7 +68,6 @@ class ImageProcessor(object):
 			downsample = self.imdb.cfg.DOWNSAMPLE
 		if downsample:
 			scale = self.imdb.cfg.ON_RENDER_DOWNSAMPLE
-			print(scale)
 			img = img[::scale, ::scale]
 
 		return img

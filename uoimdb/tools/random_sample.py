@@ -9,15 +9,11 @@ import uoimdb as uo
 from uoimdb.tagging.image_processing import ImageProcessor
 
 
-# load image database
-imdb = uo.uoimdb()
-image_processor = ImageProcessor(imdb)
-random_sample_dir = os.path.join(imdb.cfg.DATA_LOCATION, 'random_samples')
 
-
-def cache_images(sample, filter, timer_every=50, window=None, n=None, recompute=False):
+def cache_images(image_processor, sample, filter, timer_every=50, window=None, n=None, recompute=False):
     # load a list of all srcs referenced in the specified random samples    
-    sample_srcs = gather_random_sample_srcs(sample, window)    
+    imdb = image_processor.imdb
+    sample_srcs = gather_random_sample_srcs(imdb, sample, window)    
 
     # order images by date for more efficient loading
     sample_srcs = imdb.df.date[sample_srcs].sort_values().index
@@ -47,17 +43,19 @@ def cache_images(sample, filter, timer_every=50, window=None, n=None, recompute=
 
 
 
-def delete_sample(sample):
+def delete_sample(imdb, sample):
+    random_sample_dir = os.path.join(imdb.cfg.DATA_LOCATION, 'random_samples')
     for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(sample))):
         if os.path.isfile(f):
             os.remove(f)
 
 
-def create_sample(sample):
+def create_sample(imdb, sample):
     pass
 
 
-def gather_random_sample_srcs(sample, window=None):
+def gather_random_sample_srcs(imdb, sample, window=None):
+    random_sample_dir = os.path.join(imdb.cfg.DATA_LOCATION, 'random_samples')
     sample_srcs = []
     for f in glob.glob(os.path.join(random_sample_dir, '{}.csv'.format(sample))):
         idx = pd.read_csv(f, index_col='src').index
@@ -88,6 +86,10 @@ if __name__ == '__main__':
     parser.add_argument('-n', help='Cache the first n images. Useful for testing.', default=None, type=int)
     parser.add_argument('--recompute', help="Don't skip if the image already exists", action='store_true')
     args = parser.parse_args()
+    
+    # load image database
+    imdb = uo.uoimdb()
+    image_processor = ImageProcessor(imdb)
 
     try:
         window = [int(w) for w in args.window.split(',')]
@@ -100,13 +102,14 @@ if __name__ == '__main__':
         raise NotImplementedError('Not implemented yet. sorry. Use the tagging app API (/random/<name>/create/) for the time being.')
 
     elif args.action == 'delete':
-        delete_sample(args.sample)
+        delete_sample(imdb, args.sample)
 
     elif args.action == 'cache':
-        cache_images(args.sample, filter=args.filter, timer_every=args.timer, n=args.n, window=window, recompute=args.recompute)
+        print('Starting caching of {} using the "{}" filter...'.format(args.sample, args.filter))
+        cache_images(image_processor, args.sample, filter=args.filter, timer_every=args.timer, n=args.n, window=window, recompute=args.recompute)
 
     elif args.action == 'list':
-        gather_random_sample_srcs(args.sample, window=window)
+        gather_random_sample_srcs(imdb, args.sample, window=window)
 
     else:
         raise ValueError('Action not found.')
