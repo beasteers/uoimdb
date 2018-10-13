@@ -28,7 +28,51 @@
     <script src="{{ url_for('.static', filename='js/d3-mods.js') }}"></script>
   </head>
   <body>
-    {% block nav %}{% endblock %}
+
+    {% block nav %}
+    {#  navbar-light bg-light #}
+      <nav class="navbar navbar-expand-lg fixed-bottom {% block nav_classes %}{% endblock %}">
+
+        {% block action_section %}
+          <div class='menu-actions'>
+            {% block actions %}{% endblock %}
+
+            <span id="messages"></span>
+          </div>
+        {% endblock %}
+        
+
+        {% block nav_brand %}
+          <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
+        {% endblock %}
+
+        {% block nav_links %}
+          <div>
+            {% if parent_page %}<a class="badge badge-light ml-1" href="{{ parent_page }}"><i class='fa fa-home'></i></a>{% endif %}
+            <a class="badge badge-light ml-1 load-query {{ 'ajax d-none' if not prev_query }}" href="{{ prev_query or '' }}" id='prev_query'>&larr;</a>
+            <a class="badge badge-light ml-1 load-query {{ 'ajax d-none' if not next_query }}" href="{{ next_query or '' }}" id='next_query'>&rarr;</a>
+          </div>
+        {% endblock %}
+
+        
+
+        {% block nav_content %}
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent" 
+                  aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="fa fa-bars"></span>
+          </button>
+
+          <div class="collapse navbar-collapse ml-1" id='navbarContent'>
+            <form class="form-inline my-2 my-lg-0" id='controls'>
+              {% block controls %}{% endblock %}
+              
+              <span id="messages"></span>
+            </form>
+          </div>
+        {% endblock %}
+        
+      </nav>  
+    {% endblock %}
 
   	{% block content %}{% endblock %}
 

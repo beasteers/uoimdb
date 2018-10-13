@@ -11,65 +11,44 @@
   {% endif %}
 {% endblock %}
 
-{% block nav %}
-{#  navbar-light bg-light #}
-  <nav class="navbar navbar-expand-lg fixed-bottom collapsed">
 
+{% block nav_classes %} collapsed{% endblock %}
 
-    <div class='menu-actions'>
-      <span id='expand-nav' title='More Options'><i class="fas fa-sliders-h"></i></span>
+{% block actions %}
+  <span id='expand-nav' title='More Options'><i class="fas fa-sliders-h"></i></span>
 
-      <span id='rewind' title='Jump Backwards'><i class="fas fa-backward"></i></span>
-      <span id='step-back' title='Step Backwards'><i class="fas fa-caret-left"></i></span>
+  <span id='rewind' title='Jump Backwards'><i class="fas fa-backward"></i></span>
+  <span id='step-back' title='Step Backwards'><i class="fas fa-caret-left"></i></span>
 
-      <span id='play-pause' title='Play/Pause'><i class="fas fa-play"></i></span>
+  <span id='play-pause' title='Play/Pause'><i class="fas fa-play"></i></span>
 
-      <span id='step-forward' title='Step Forwards'><i class="fas fa-caret-right"></i></span>
-  	  <span id='fastforward' title='Jump Forwards'><i class="fas fa-forward"></i></span>
+  <span id='step-forward' title='Step Forwards'><i class="fas fa-caret-right"></i></span>
+  <span id='fastforward' title='Jump Forwards'><i class="fas fa-forward"></i></span>
 
-  	  <span id='toggle-original' title='Toggle Original'><i class="fas fa-image"></i></span>
+  <span id='toggle-original' title='Toggle Original'><i class="fas fa-image"></i></span>
 
-      <span id='mark-unreviewed' title='Mark Unreviewed'>
-        <span class="fa-layers fa-fw">
-          <i class="far fa-square"></i>
-          <i class="fas fa-exclamation" data-fa-transform="shrink-6"></i>
-        </span>
-      </span>
-
-      <span id="messages"></span>
-    </div>
-    
-
-    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
-
-    <div>
-      {% if parent_page %}<a class="badge badge-light ml-1" href="{{ parent_page }}"><i class='fa fa-home'></i></a>{% endif %}
-      <a class="badge badge-light ml-1 load-query {{ 'ajax d-none' if not prev_query }}" href="{{ prev_query or '' }}" id='prev_query'>&larr;</a>
-      <a class="badge badge-light ml-1 load-query {{ 'ajax d-none' if not next_query }}" href="{{ next_query or '' }}" id='next_query'>&rarr;</a>
-    </div>
-
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="fa fa-bars"></span>
-    </button>
-    
-
-    <div class="collapse navbar-collapse ml-1" id='navbarContent'>
-      <form class="form-inline my-2 my-lg-0" id='controls'>
-        <div class='form-group'>
-          <label for="videoSpeed">Video Speed</label>
-          <input class='form-control mx-2' type="range" min="{{ config.SPEED.MIN }}" max="{{ config.SPEED.MAX }}" step="{{ config.SPEED.STEP }}" value='{{ config.SPEED.DEFAULT }}' style='direction: rtl' id="videoSpeed">
-        </div>
-        <div class='form-group'>
-          <label for="imgFilter">Image Filter</label>
-          <select class='form-control custom-select custom-select-sm mx-2' id="imgFilter"></select>
-        </div>
-        <button class="btn btn-success my-sm-0 mx-2" id='save' type='button'>Save</button>
-        
-        <span id="messages"></span>
-      </form>
-    </div>
-  </nav>
+  <span id='mark-unreviewed' title='Mark Unreviewed'>
+    <span class="fa-layers fa-fw">
+      <i class="far fa-square"></i>
+      <i class="fas fa-exclamation" data-fa-transform="shrink-6"></i>
+    </span>
+  </span>
 {% endblock %}
+
+
+{% block controls %}
+  <div class='form-group'>
+    <label for="videoSpeed">Video Speed</label>
+    <input class='form-control mx-2' type="range" min="{{ config.SPEED.MIN }}" max="{{ config.SPEED.MAX }}" step="{{ config.SPEED.STEP }}" value='{{ config.SPEED.DEFAULT }}' style='direction: rtl' id="videoSpeed">
+  </div>
+  <div class='form-group'>
+    <label for="imgFilter">Image Filter</label>
+    <select class='form-control custom-select custom-select-sm mx-2' id="imgFilter"></select>
+  </div>
+  <button class="btn btn-success my-sm-0 mx-2" id='save' type='button'>Save</button>
+{% endblock %}
+
+
 
 
 {% block content %}
@@ -77,6 +56,8 @@
   <div id="video-timeline"></div>
 	<div id="grid"></div>
 {% endblock %}
+
+
 
 {% block scripts %}
 	<script>

@@ -209,7 +209,8 @@ body {
 	bottom: 100%;
 	background: #7171716b;
 	color: #ffffff8f;
-	padding: 0.2em 0.8em;
+	/*padding: 0.2em 0.8em;*/
+	padding: 0 0.8em;
 	border-top-left-radius: 8px;
 	border-top-right-radius: 8px;
 	font-size: 1.3em;
@@ -223,6 +224,7 @@ body {
 }
 
 .navbar .menu-actions > span {
+	margin: 0.2em 0;
 	cursor: pointer;
 	transition: color 0.2s ease-in-out;
 }

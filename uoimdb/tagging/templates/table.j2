@@ -1,13 +1,12 @@
 {% extends 'base.j2' %}
 
-{% block nav %}
-  <nav class="navbar navbar-expand-lg fixed-bottom">
-    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }} <small class='badge badge-light'>sample: {{ name }}</small></a>
-    </button>
+{% block nav_brand %}
+  {{ super() }}
+  <small class='badge badge-light'>sample: {{ name }}</small>
+{% endblock %}
 
-    <div class="collapse navbar-collapse">
-      <a class="btn btn-outline-dark my-sm-0" href="{{ url_for('.calendar') }}">To Calendar</a>
-    </div>
+{% block nav_content %}
+    <div class="collapse navbar-collapse"></div>
 
     {% if links %}
       <div class="dropup show">
@@ -22,7 +21,6 @@
         </div>
       </div>
     {% endif %}
-  </nav>
 {% endblock %}
 
 

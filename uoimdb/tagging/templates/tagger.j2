@@ -4,41 +4,44 @@
   <link rel="stylesheet" href="{{ url_for('.static', filename='css/tagger.css') }}">
 {% endblock %}
 
-{% block nav %}
-  <nav class="navbar navbar-expand-lg fixed-bottom collapsed">
-    <div class='menu-actions'>
-      <i class="fas fa-sliders-h" id='expand-nav' title='More Options'></i>
-      <span id="messages"></span>
-    </div>
+{# Nav #}
 
-    <a class="navbar-brand" href="{{ url_for('.calendar') }}">{{ config.APP_TITLE }}</a>
+{% block nav_classes %} collapsed{% endblock %}
 
-    {% if prev_day %}
-      <a class="timeblock timebutton" href="{{ url_for('.timeline_day', date=prev_day) }}" title='{{ prev_day }}'>&larr;</a>
-    {% endif %}
-    <a class="timeblock timebutton" href="{{ url_for('.video_day', date=date) }}" title='View as video'><i class="fas fa-video"></i></a>
-    {% if next_day %}
-      <a class="timeblock timebutton" href="{{ url_for('.timeline_day', date=next_day) }}" title='{{ next_day }}'>&rarr;</a>
-    {% endif %}
-
-    <div class="collapse navbar-collapse">
-      <form class="form-inline my-2 my-lg-0" id='controls'>
-        <label for="rowCount">Column Size</label>
-        <input class='form-control mx-2' type="range" min="0" max="{{ config.GRID.SIZES|length-1 }}" step="1" value='{{ config.GRID.DEFAULT_INDEX }}' id="rowCount">
-        <label for="rowCount">Image Filter</label>
-        <select class='form-control custom-select custom-select-sm mx-2' id="imgFilter"></select>
-        <button class="btn btn-success my-sm-0" id='save' type='button'>Save</button>
-      </form>
-    </div>
-  </nav>
+{% block nav_links %}
+{# should make this conform to base.j2 eventually #}
+  {% if prev_day %}
+    <a class="timeblock timebutton" href="{{ url_for('.timeline_day', date=prev_day) }}" title='{{ prev_day }}'>&larr;</a>
+  {% endif %}
+  <a class="timeblock timebutton" href="{{ url_for('.video_day', date=date) }}" title='View as video'><i class="fas fa-video"></i></a>
+  {% if next_day %}
+    <a class="timeblock timebutton" href="{{ url_for('.timeline_day', date=next_day) }}" title='{{ next_day }}'>&rarr;</a>
+  {% endif %}
 {% endblock %}
 
+{% block actions %}
+  <i class="fas fa-sliders-h" id='expand-nav' title='More Options'></i>
+{% endblock %}
+
+{% block controls %}
+  <label for="rowCount">Column Size</label>
+  <input class='form-control mx-2' type="range" min="0" max="{{ config.GRID.SIZES|length-1 }}" step="1" value='{{ config.GRID.DEFAULT_INDEX }}' id="rowCount">
+  <label for="rowCount">Image Filter</label>
+  <select class='form-control custom-select custom-select-sm mx-2' id="imgFilter"></select>
+  <button class="btn btn-success my-sm-0" id='save' type='button'>Save</button>
+{% endblock %}
+
+
+{# Main #}
 
 {% block content %}
   <div id="tooltip"></div>
   <div id="timeline"></div>
 	<div id="grid"></div>
 {% endblock %}
+
+
+
 
 {% block scripts %}
 	<script>
