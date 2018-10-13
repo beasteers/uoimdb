@@ -3,14 +3,16 @@ import cv2
 import glob
 import numpy as np
 import pandas as pd
-from collections import OrderedDict as odict
+from multiprocessing.pool import ThreadPool
 
 import uoimdb as uo
 from uoimdb.tagging.image_processing import ImageProcessor
 
+import traceback
 
 
-def cache_images(image_processor, sample, filter, timer_every=50, window=None, n=None, recompute=False):
+
+def cache_images(image_processor, sample, filter, timer_every=50, window=None, n=None, offset=None, recompute=False, pool=False, raise_errors=False):
     # load a list of all srcs referenced in the specified random samples    
     imdb = image_processor.imdb
     sample_srcs = gather_random_sample_srcs(imdb, sample, window)    
@@ -24,14 +26,32 @@ def cache_images(image_processor, sample, filter, timer_every=50, window=None, n
     print('Saving images to {}... {} cached images exist there currently.'.format(
         imdb.cfg.IMAGE_CACHE_LOCATION, len(glob.glob(os.path.join(imdb.cfg.IMAGE_CACHE_LOCATION, '*')))))
 
+    if offset is not None:
+        print('Starting at image {}.'.format(offset))
+        sample_srcs = sample_srcs[offset:]
     if n is not None:
-        print('Only caching the first {}/{} images'.format(n, len(sample_srcs)))
+        print('Only caching {} images.'.format(n))
         sample_srcs = sample_srcs[:n]
 
-    for src in uo.utils.timer(sample_srcs, every=timer_every, what='loop'):
+    if pool:
+        if pool is True:
+            pool = 30
+        print('loading images using {} threads'.format(pool))
+        pool = ThreadPool(pool)
+        
+    for i, src in enumerate(uo.utils.timer(sample_srcs, every=timer_every, what='loop')):
         cache_filename = image_processor.cache_filename(src, filter, ext='jpg')
         if recompute or not os.path.isfile(cache_filename):
-            img = image_processor.process_image(src, filter)
+            try:
+                img = image_processor.process_image(src, filter, pool=pool)
+            except Exception as e:
+                print('!!! Error creating image {}: {}'.format(i, src))
+                if raise_errors:
+                    raise e
+                else:
+                    traceback.print_exc()
+                    continue
+                
 
             if img is None:
                 print('Failed creating {}.'.format(cache_filename))
@@ -41,7 +61,10 @@ def cache_images(image_processor, sample, filter, timer_every=50, window=None, n
     print('Done. {} now contains {} images.'.format(
         imdb.cfg.IMAGE_CACHE_LOCATION, len(glob.glob(os.path.join(imdb.cfg.IMAGE_CACHE_LOCATION, '*')))))
 
-
+    if pool:
+        pool.close()
+        pool.join()
+    
 
 def delete_sample(imdb, sample):
     random_sample_dir = os.path.join(imdb.cfg.DATA_LOCATION, 'random_samples')
@@ -75,21 +98,26 @@ def gather_random_sample_srcs(imdb, sample, window=None):
 
 
 if __name__ == '__main__':
+    # load image database
+    imdb = uo.uoimdb()
+    image_processor = ImageProcessor(imdb)
+    
+    
     import argparse
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('action', help='create|delete|cache random sample')
     parser.add_argument('sample', help='the random sample to use. can be a glob pattern (e.g. sample-*).', default=None)
     parser.add_argument('-f', '--filter', help='the image filter to use. Can be {}'.format(
         '|'.join(['"'+f+'"' for f in image_processor.filters.keys()])), default='Background Subtraction (mean)')
-    parser.add_argument('--timer', help='After how many images should we print out the time statistics.', default=10)
+    parser.add_argument('--timer', help='After how many images should we print out the time statistics.', default=10, type=int)
     parser.add_argument('-w', '--window', help='Also cache images surrounding the sample images.', nargs='?', default=None, const=imdb.cfg.SAMPLE_WINDOW)
     parser.add_argument('-n', help='Cache the first n images. Useful for testing.', default=None, type=int)
+    parser.add_argument('--offset', help='Which index to start at.', default=None, type=int)
     parser.add_argument('--recompute', help="Don't skip if the image already exists", action='store_true')
+    parser.add_argument('-e', '--errors', help="If an error occurs, raise it. Otherwise, continue on to the next image.", action='store_true')
+    parser.add_argument('--pool', help="Use threads to load images", nargs='?', default=None, const=True, type=int)
     args = parser.parse_args()
     
-    # load image database
-    imdb = uo.uoimdb()
-    image_processor = ImageProcessor(imdb)
 
     try:
         window = [int(w) for w in args.window.split(',')]
@@ -106,7 +134,7 @@ if __name__ == '__main__':
 
     elif args.action == 'cache':
         print('Starting caching of {} using the "{}" filter...'.format(args.sample, args.filter))
-        cache_images(image_processor, args.sample, filter=args.filter, timer_every=args.timer, n=args.n, window=window, recompute=args.recompute)
+        cache_images(image_processor, args.sample, filter=args.filter, timer_every=args.timer, n=args.n, offset=args.offset, window=window, recompute=args.recompute, pool=args.pool, raise_errors=args.errors)
 
     elif args.action == 'list':
         gather_random_sample_srcs(imdb, args.sample, window=window)

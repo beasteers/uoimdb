@@ -31,13 +31,13 @@ class ImageProcessor(object):
 			self.filters[name].fake_crop()
 
 
-	def process_image(self, filename, filter=None):
+	def process_image(self, filename, filter=None, **kw):
 		filter = filter or 'Original'
 		if filter not in self.filters:
 			return None
 
 		# get image
-		img = self.filters[filter].feed(src=filename).first()
+		img = self.filters[filter].feed(src=filename, **kw).first()
 
 		# convert from rgb2bgr for opencv
 		if len(img.shape) < 3:
