@@ -88,7 +88,7 @@ USERS: {}
 # everything above this line is private and will not be visible via the front end
 ---
 # everything below is used for the front end and will be visible to all app users. NO SENSITIVE DATA BELOW!!
-# without this doc divider, all data will be visible to the front end which is not recommended.
+# without this doc divider, all data (including usernames and passwords) would be visible to the front end which is not recommended.
 
 
 
@@ -103,6 +103,9 @@ APP_TITLE: UO Tagger # white label cuz why not!
 DATE_FORMAT: '%Y-%m-%d' # used for urls
 DATETIME_FORMAT: '%Y-%m-%d %H:%M:%S' 
 CACHE_ALL_IMAGES: false # will cache every image loaded through the app to IMAGE_CACHE_LOCATION
+
+DEFAULT_FILTER: Background Subtraction (mean)
+TABLE_PAGINATION: 100
 
 # frontend
 

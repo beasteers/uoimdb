@@ -249,8 +249,10 @@ class TaggingApp(object):
 
 		@self.app.route('/random/')
 		@self.app.route('/random/<name>/')
+		@self.app.route('/random/<name>/p/<int:page>')
+		@self.app.route('/random/<name>/page/<int:page>')
 		@flask_login.login_required
-		def random_sample_list(name=None):
+		def random_sample_list(name=None, page=1):
 			'''Display images on a certain day'''
 			if not name:
 				try:
@@ -263,27 +265,66 @@ class TaggingApp(object):
 				return abort(404, "{} doesnt exist. Create a random sample by going to /random/{}/create".format(name, name))
 
 			# select random sample from imdb
-			df = self.random_samples[name]
-			# move user columns first
-			df = df[[c for c in df.columns if c.startswith(user_col(''))] + 
-					[c for c in df.columns if not c.startswith(user_col(''))]]
-			
-			df.insert(0, 'date', self.imdb.df.loc[df.index].date)
+			df = self.random_samples[name].copy()
+			sample_cols = df.columns
+			total_count = len(df)
+
+			# shuffle order unique for a user. add src as column and numerical index column
+			df = df.iloc[self._user_permutations[user_col(name)]].reset_index().reset_index()
+
+			# filter out any images that have not yet been cached
+			if int(request.args.get('only_cached', 0)):
+				df['is_cached'] = df.src.apply(lambda src: 
+					os.path.isfile(self.image_processor.cache_filename(src, self.cfg.DEFAULT_FILTER)))
+				df = df[df.is_cached]
+
+
+			# select images on the specified page
+			max_page, per_page = None, self.cfg.TABLE_PAGINATION
+			if per_page:
+				max_page = -(-len(df) // per_page) # rounds up using negative
+				if 1 <= page <= max_page:
+					df = df.iloc[(page - 1) * per_page : page * per_page]
+				else:
+					return abort(404, "Page {} doesn't exist for sample {} with {} images, showing {} per page. "
+									   "Specify a page number between {} and {}.".format(
+											page, name, total_count, per_page, 1, max_page))
+
+
+			# mark images in page as cached if not done already.
+			if 'is_cached' not in df.columns: 
+				# avoid computing this for all images every time. only the current page. unless we need to filter by it.
+				df['is_cached'] = df.src.apply(lambda src: 
+					os.path.isfile(self.image_processor.cache_filename(src, self.cfg.DEFAULT_FILTER)))
+
+
+			# add image dates
+			df['date'] = self.imdb.df.date[df.src].values
 
 			# link to image page
-			df = df.reset_index()
 			df.src = [
-				'<a href="{}">{}</a>'.format(url_for('random_sample_video', name=name, i=i), src) 
-				for i, src in enumerate(df.src)
+				('<a href="{}">{}</a>'.format(url_for('random_sample_video', name=name, i=i), row.src)
+				 + (' <i class="badge badge-dark" title="Image Is Cached"><i class="fas fa-check"></i></i>' 
+				 	if row.is_cached else '')
+				) for i, row in df.iterrows()
 			]
 
-			# shuffle unique for a user. add numerical index
-			df = df.loc[self._user_permutations[user_col(name)]].reset_index(drop=True).reset_index()
+			# get rid of columns we don't want to show.
+			df = df.drop('is_cached', 1) 
+
+			# order the columns correctly
+			main_cols = ['index', 'src', 'date']
+			df = df[main_cols + 
+					[c for c in sample_cols if c.startswith(user_col(''))] + 
+					[c for c in sample_cols if not c.startswith(user_col(''))]]
 
 
-			return render_template('table.j2', title='Random Sample: {}'.format(name), name=name,
+			return render_template('table.j2', title='Random Sample: {}'.format(name) + ('|Page {}/{}'.format(page, max_page) if per_page else ''), 
+				name=name,
 				columns=df.columns, 
 				data=df.to_dict(orient='records'), 
+				prev_query=url_for('random_sample_list', name=name, page=page-1) if per_page and page > 1 else None,
+				next_query=url_for('random_sample_list', name=name, page=page+1) if per_page and page < max_page else None,
 				links=[
 					{'name': name, 'url': url_for('random_sample_list', name=name)}
 					for name in self.random_samples
@@ -656,7 +697,6 @@ class TaggingApp(object):
 	- image_response: convert opencv image to flask response
 
 	'''
-
 
 	def get_boxes_for_imgs(self, df):
 		labels = self.labels_df[self.labels_df.src.isin(df.index)]
