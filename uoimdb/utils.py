@@ -329,7 +329,25 @@ def cache_result(file, refresh=False, verbose=False):
     return outer
         
         
-        
+def yield_lines(f, n=None):
+    '''Takes a file and gets lines from it one by one (theoretically)'''
+    i = 0
+    while True:
+        line = f.readline()
+        try:
+            line = line.decode('utf-8')
+        except Exception:
+            pass
+        line = line.rstrip('\n')
+
+        if line and not line.startswith('\x1b['):
+            yield line
+        else:
+            break
+
+        i += 1
+        if n is not None and i >= n:
+            break
         
         
 # def dict2xml(data, root='root', key=None):
