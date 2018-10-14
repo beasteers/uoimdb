@@ -16,7 +16,7 @@ setuptools.setup(name='uoimdb',
                         'dill', 'imageio', 'numpy', 'pandas', 'matplotlib', 'filelock', # uoimdb
                         'PyYAML', # config.py
                         # 'Flask', 
-                        'Flask-Login', # app.py
+                        'Flask-Login', 'pyopenssl', # app.py
                         'scikit-learn',
                  ],
                  entry_points={
