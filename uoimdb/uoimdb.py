@@ -97,17 +97,21 @@ class uoimdb(object):
         # load the image list
         if df is not None: # use preloaded df
             self.df = df
+            df_needs_to_be_saved = False
 
         elif not refresh and os.path.isfile(self._cache_file): # load from file
             self.df = pd.read_pickle(self._cache_file)
+            df_needs_to_be_saved = False
 
         else: # create imdb cache
             self.df = pd.DataFrame(index=pd.Index([
                 self.path_to_src(path)
                 for path in self.load_image_files()
             ], name='src'))
+            df_needs_to_be_saved = True
 
         if not 'date' in self.df.columns:
+            df_needs_to_be_saved = True
             print(('Missing file timestamps in {}. Needs to extract file timestamps which could take a WHILE. For >1M images, it was taking 20-30 mins. '
                    'This only needs to run once though and subsequent times will load the cached pickle file and '
                    'finish in seconds.').format(self._cache_file))
@@ -115,13 +119,16 @@ class uoimdb(object):
             self.df = self.df.sort_values('date')
 
         if not 'idx' in self.df.columns:
+            df_needs_to_be_saved = True
             self.df['idx'] = self.df.index.map(self.src_to_idx)
 
         if not 'time_gap' in self.df.columns:
+            df_needs_to_be_saved = True
             print('Calculating time gap...')
             self.df['time_gap'] = (self.df.date - self.df.date.shift()).fillna(0) / np.timedelta64(1, 's')
 
         if not 'distance_to_gap' in self.df.columns:
+            df_needs_to_be_saved = True
             print('Calculating distance to closest time gap...')
             self.df['distance_to_gap'] = 0.
 
@@ -140,7 +147,7 @@ class uoimdb(object):
                     self.df.at[i, 'distance_to_gap'] = distance_to_gap
                 distance_to_gap += 1
 
-        if len(self.df):
+        if len(self.df) and df_needs_to_be_saved:
             self.save_meta()
 
         self.df['im'] = pd.Series(dtype=object)
@@ -340,8 +347,15 @@ class uoimdb(object):
         self.image_cache_list.clear()
         return self
 
-    def save_meta(self):
-        self.df.drop('im', axis=1, errors='ignore').to_pickle(self._cache_file)
+    def save_meta(self, cache_file=None):
+        '''Save the updated dataframe to a pickle file.'''
+        # Using a tmp file so that if it gets interrupted, it won't overwrite and corrupt the original file
+        # (I've done this numerous times lol)
+        cache_file = cache_file or self._cache_file
+        tmp_file = cache_file + '~'
+        self.df.drop('im', axis=1, errors='ignore').to_pickle(tmp_file)
+        os.remove(cache_file) # I think this is only needed for windows. better safe than sorry.
+        os.rename(tmp_file, cache_file)
         return self
     
 
