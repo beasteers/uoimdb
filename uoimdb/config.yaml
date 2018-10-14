@@ -8,7 +8,10 @@ DATA_LOCATION: data # where the imdb cache and labels are stored
 LABELS_FILE: labels.csv # csv of the gathered labels (from the app)
 IMAGE_BASE_DIR: images # the common directory which all images are stored under
 IMAGE_FILE_PATTERN: '*' # the glob file pattern for getting all images. relative to IMAGE_DIR
+
+# app image caching
 IMAGE_CACHE_LOCATION: image_cache # defaults to DATA_LOCATION/image_cache. use absolute path for locations outside DATA_LOCATION.
+IMAGE_CACHE_EXT: jpg
 
 # in case you want to keep the image location secret, you can store it in either one of these
 IMAGE_BASE_DIR_ENVVAR: UOIMAGES_DIR # an environmental variable
