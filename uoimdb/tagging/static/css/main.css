@@ -310,7 +310,11 @@ body {
 }
 
 
-
+/* Table */
+.table {
+	font-size: 0.65em;
+}
+    
 /* Login */
 
 .card-panel {

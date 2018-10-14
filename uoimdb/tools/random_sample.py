@@ -1,4 +1,5 @@
 import os
+import sys
 import cv2
 import glob
 import numpy as np
@@ -12,10 +13,10 @@ import traceback
 
 
 
-def cache_images(image_processor, sample, filter, timer_every=50, window=None, n=None, offset=None, recompute=False, pool=False, raise_errors=False):
+def cache_images(image_processor, sample_srcs, filter=None, timer_every=50, n=None, offset=None, recompute=False, pool=False, raise_errors=False):
     # load a list of all srcs referenced in the specified random samples    
     imdb = image_processor.imdb
-    sample_srcs = gather_random_sample_srcs(imdb, sample, window)    
+    filter = filter or imdb.cfg.DEFAULT_FILTER
 
     # order images by date for more efficient loading
     sample_srcs = imdb.df.date[sample_srcs].sort_values().index
@@ -40,7 +41,7 @@ def cache_images(image_processor, sample, filter, timer_every=50, window=None, n
         pool = ThreadPool(pool)
         
     for i, src in enumerate(uo.utils.timer(sample_srcs, every=timer_every, what='loop')):
-        cache_filename = image_processor.cache_filename(src, filter, ext='jpg')
+        cache_filename = image_processor.cache_filename(src, filter, ext=imdb.cfg.IMAGE_CACHE_EXT)
         if recompute or not os.path.isfile(cache_filename):
             try:
                 img = image_processor.process_image(src, filter, pool=pool)
@@ -97,6 +98,15 @@ def gather_random_sample_srcs(imdb, sample, window=None):
     return sample_srcs
 
 
+def src_from_cache_fn(fn):
+    '''Reverse of ImageProcessor.cache_filename(). 
+        NOTE... This is hard-coded to our specific format. Need to generalize this later. '''
+    fn = os.path.basename(fn)
+    filter, idx = fn.split(',', 1)
+    src = os.path.splitext(idx.replace(',', '/'))[0] + '.png'
+    return src
+
+
 if __name__ == '__main__':
     # load image database
     imdb = uo.uoimdb()
@@ -108,7 +118,7 @@ if __name__ == '__main__':
     parser.add_argument('action', help='create|delete|cache random sample')
     parser.add_argument('sample', help='the random sample to use. can be a glob pattern (e.g. sample-*).', default=None)
     parser.add_argument('-f', '--filter', help='the image filter to use. Can be {}'.format(
-        '|'.join(['"'+f+'"' for f in image_processor.filters.keys()])), default='Background Subtraction (mean)')
+        '|'.join(['"'+f+'"' for f in image_processor.filters.keys()])), default=imdb.cfg.DEFAULT_FILTER)
     parser.add_argument('--timer', help='After how many images should we print out the time statistics.', default=10, type=int)
     parser.add_argument('-w', '--window', help='Also cache images surrounding the sample images.', nargs='?', default=None, const=imdb.cfg.SAMPLE_WINDOW)
     parser.add_argument('-n', help='Cache the first n images. Useful for testing.', default=None, type=int)
@@ -133,8 +143,23 @@ if __name__ == '__main__':
         delete_sample(imdb, args.sample)
 
     elif args.action == 'cache':
-        print('Starting caching of {} using the "{}" filter...'.format(args.sample, args.filter))
-        cache_images(image_processor, args.sample, filter=args.filter, timer_every=args.timer, n=args.n, offset=args.offset, window=window, recompute=args.recompute, pool=args.pool, raise_errors=args.errors)
+        if not os.isatty(0):
+            print('Gathering srcs from stdin...')
+            if args.recompute:
+                print("Because the recompute flag was used, it's assumed that the images are specified using their paths in the image cache directory.")
+            sample_srcs = np.array([
+                src_from_cache_fn(l) if args.recompute else l
+                for l in uo.utils.yield_lines(sys.stdin)
+            ])
+            print('Gathered {} images.'.format(len(sample_srcs)))
+            print(sample_srcs[:5])
+            
+        else:
+            print('Starting caching of {} using the "{}" filter...'.format(args.sample, args.filter))
+            sample_srcs = gather_random_sample_srcs(imdb, args.sample, window) 
+        
+        cache_images(image_processor, sample_srcs, filter=args.filter, n=args.n, offset=args.offset, 
+                     recompute=args.recompute, pool=args.pool, timer_every=args.timer, raise_errors=args.errors)
 
     elif args.action == 'list':
         gather_random_sample_srcs(imdb, args.sample, window=window)
