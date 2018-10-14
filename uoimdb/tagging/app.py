@@ -250,9 +250,9 @@ class TaggingApp(object):
         @self.app.route('/random/')
         @self.app.route('/random/<name>/')
         @self.app.route('/random/<name>/p/<int:page>')
-        @self.app.route('/random/<name>/page/<int:page>')
+        @self.app.route('/random/<name>/user/<user>/p/<int:page>')
         @flask_login.login_required
-        def random_sample_list(name=None, page=1):
+        def random_sample_list(name=None, page=1, user=None):
             '''Display a list of all images in a specific random sample.
             Request Arguments:
                 name (str): the sample name.
@@ -262,6 +262,8 @@ class TaggingApp(object):
                 not_status (str): all images without a certain status for the current user
                 <user>_not_status (str): all images without a certain status for a specific user
                 only_cached (bool): if true, only return images that have been cached
+                chronological (bool): order images by chronological order
+                per_page (int): 
                 
             '''
             if not name:
@@ -280,7 +282,7 @@ class TaggingApp(object):
             total_count = len(df)
 
             # shuffle order unique for a user. add src as column and numerical index column
-            order = self._user_permutations[user_col(name)] # , user=requests.args.get('user_order')
+            order = self._user_permutations[user_col(name, user=user)] # 
             df = df.iloc[order].reset_index().reset_index()
             
             # filter by status
@@ -313,7 +315,7 @@ class TaggingApp(object):
                 df = df[df.is_cached]
 
             # select images on the specified page
-            max_page, per_page = None, self.cfg.TABLE_PAGINATION
+            max_page, per_page = None, int(request.args.get('per_page', self.cfg.TABLE_PAGINATION or 0))
             if per_page:
                 max_page = -(-len(df) // per_page) # rounds up using negative
                 if 1 <= page <= max_page:
@@ -355,8 +357,8 @@ class TaggingApp(object):
                 name=name,
                 columns=df.columns, 
                 data=df.to_dict(orient='records'), 
-                prev_query=url_for('random_sample_list', name=name, page=page-1) if per_page and page > 1 else None,
-                next_query=url_for('random_sample_list', name=name, page=page+1) if per_page and page < max_page else None,
+                prev_query=url_for('random_sample_list', name=name, page=page-1, user=user) if per_page and page > 1 else None,
+                next_query=url_for('random_sample_list', name=name, page=page+1, user=user) if per_page and page < max_page else None,
                 links=[
                     {'name': name, 'url': url_for('random_sample_list', name=name)}
                     for name in self.random_samples
@@ -395,7 +397,7 @@ class TaggingApp(object):
                 df = df[df.distance_to_gap >= distance_to_gap]
 
             # create sample independent of other samples
-            if not request.args.get('overlap_existing'):
+            if request.args.get('overlap_existing') is not None:
                 for _, sample in self.random_samples.items():
                     df = df.drop(index=sample.index, errors='ignore')
 
@@ -404,7 +406,7 @@ class TaggingApp(object):
 
             n_samples = int(request.args.get('n_samples', 0))
             if n_samples: # create several overlapping samples
-                overlap_ratio = float(request.args.get('overlap_ratio', 0.1))
+                overlap_ratio = float(request.args.get('overlap_ratio', self.cfg.SAMPLE_OVERLAP_RATIO))
                 n_needed = int(n * (n_samples - (n_samples - 1) * overlap_ratio))
 
                 full_sample = df.sample(n=min(n_needed, len(df))).index
@@ -440,9 +442,10 @@ class TaggingApp(object):
             return redirect(url_for('random_sample_list'))
 
 
-        @self.app.route('/random/<name>/<int:i>/')
+        @self.app.route('/random/<name>/i/<int:i>/')
+        @self.app.route('/random/<name>/user/<user>/i/<int:i>/')
         @flask_login.login_required
-        def random_sample_video(name, i):
+        def random_sample_video(name, i, user=None):
             '''Display images on a certain day'''
             if name in self.random_samples and i < len(self.random_samples[name]):
                 src = self.random_samples[name].index[i]
@@ -450,9 +453,9 @@ class TaggingApp(object):
                 # 	self.random_samples[name].loc[src, user_col('status')] = 'reviewed'
 
                 return render_template('video.j2', title='Random', sample_name=name,
-                    query=url_for('get_images', sample_name=name, sample_index=i),
-                    prev_query=url_for('random_sample_video', name=name, i=i-1) if i-1 >= 0 else None,
-                    next_query=url_for('random_sample_video', name=name, i=i+1) if i+1 < len(self.random_samples[name]) else None,
+                    query=url_for('get_images', sample_name=name, sample_index=i, sample_user=user),
+                    prev_query=url_for('random_sample_video', name=name, i=i-1, sample_user=user) if i-1 >= 0 else None,
+                    next_query=url_for('random_sample_video', name=name, i=i+1, sample_user=user) if i+1 < len(self.random_samples[name]) else None,
                     parent_page=url_for('random_sample_list', name=name))
             else:
                 return abort(404)
@@ -600,7 +603,7 @@ class TaggingApp(object):
             i_center = None
             if sample_name:
                 sample = self.random_samples[sample_name]
-                order = self._user_permutations[user_col(sample_name)] # , user=requests.args.get('sample_user')
+                order = self._user_permutations[user_col(sample_name, user=request.args.get('sample_user'))] # 
                 sample = sample.iloc[order]
                 if sample_index is None:
                     sample_index = np.where(sample[user_col('status')] != 'reviewed')[0]

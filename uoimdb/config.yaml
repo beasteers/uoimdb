@@ -40,6 +40,7 @@ DISTANCE_FROM_GAP: 10
 FILTER_TIME_RANGE: [5, 18] # between what hours should we filter by
 SAMPLE_WINDOW: [3, 3] # how many images to get on either side of a random sample
 SAMPLE_SIZE: 1000 # the default random sample size
+SAMPLE_OVERLAP_RATIO: 0.1
 
 #############################
 # image processing defaults
