@@ -33,7 +33,7 @@ def load_config(f, cfg=None):
 	
 	return cfg
 
-def get_config(filename=None):
+def get_config(filename=None, **kw):
 	global cfg
 
 	if isinstance(filename, dict):
@@ -60,7 +60,8 @@ def get_config(filename=None):
 	if os.path.isfile(filename): 
 		with open(filename, 'rt') as f:
 			cfg = load_config(f, cfg)
-
+	
+	cfg.update(**kw)
 
 	# get image base directory from secret location. was requested for UO images.
 	if not cfg.IMAGE_BASE_DIR:
@@ -81,7 +82,9 @@ def get_config(filename=None):
 		cfg.IMAGE_DIR = base_dir
 
 		
+	cfg.LABELS_LOCATION = os.path.join(cfg.DATA_LOCATION, cfg.LABELS_LOCATION)
 	cfg.IMAGE_CACHE_LOCATION = os.path.join(cfg.DATA_LOCATION, cfg.IMAGE_CACHE_LOCATION)
+	cfg.RANDOM_SAMPLE_LOCATION = os.path.join(cfg.DATA_LOCATION, cfg.RANDOM_SAMPLE_LOCATION)
 
 	loaded_configs[filename] = cfg
 	return cfg

@@ -68,8 +68,7 @@ class uoimdb(object):
         
     def __init__(self, cfg=None, df=None, refresh=False, pipeline_init=True, **kw):
         # load the configuration options and add in any overrides
-        self.cfg = get_config(cfg)
-        self.cfg.update(**kw)
+        self.cfg = get_config(cfg, **kw)
 
         # setup the loaded image buffer. keeps memory usage from blowing up
         self.image_cache_list = deque(maxlen=self.cfg.CACHE_SIZE) # stores images in load order to limit memory consumption

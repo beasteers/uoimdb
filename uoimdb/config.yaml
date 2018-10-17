@@ -4,13 +4,18 @@
 # files/data storage
 ######################
 
-DATA_LOCATION: data # where the imdb cache and labels are stored
+
 LABELS_FILE: labels.csv # csv of the gathered labels (from the app)
 IMAGE_BASE_DIR: images # the common directory which all images are stored under
 IMAGE_FILE_PATTERN: '*' # the glob file pattern for getting all images. relative to IMAGE_DIR
 
-# app image caching
+DATA_LOCATION: data # where the imdb cache and labels are stored
+LABELS_LOCATION: labels
+RANDOM_SAMPLE_LOCATION: random_samples
 IMAGE_CACHE_LOCATION: image_cache # defaults to DATA_LOCATION/image_cache. use absolute path for locations outside DATA_LOCATION.
+
+DEFAULT_LABELS_FILE: labels # csv of the gathered labels (from the app)
+
 IMAGE_CACHE_EXT: jpg
 
 # in case you want to keep the image location secret, you can store it in either one of these
@@ -110,6 +115,7 @@ CACHE_ALL_IMAGES: false # will cache every image loaded through the app to IMAGE
 
 DEFAULT_FILTER: Background Subtraction (mean)
 TABLE_PAGINATION: 100
+
 
 # frontend
 

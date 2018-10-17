@@ -2,16 +2,22 @@
 
 {% block nav_brand %}
   {{ super() }}
-  <small class='badge badge-light'>sample: {{ name }}</small>
+  <small class='badge badge-light'>{{ title }}</small>
 {% endblock %}
 
 {% block nav_content %}
     <div class="collapse navbar-collapse"></div>
 
+    {% if set_cookie_button %}
+      <button class="btn btn-outline-dark set-cookie mx-1" name='{{ set_cookie_button.name }}' value='{{ set_cookie_button.value }}'>
+        {{ set_cookie_button.label }}
+      </button>
+    {% endif %}
+
     {% if links %}
       <div class="dropup show">
         <a class="btn btn-outline-dark dropdown-toggle" href="#" role="button" id="selectSample" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          Choose Sample
+          Select Table
         </a>
 
         <div class="dropdown-menu" aria-labelledby="selectSample">
@@ -25,6 +31,8 @@
 
 
 {% block content %}
+  
+
 	<table class="table text-light">
     <thead>
       <tr>
@@ -43,7 +51,38 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% if stats %}
+    <table class="table text-light">
+      <thead>
+        <tr>
+          {% for name in stats %}
+            <th scope="col">{{ name }}</th>
+          {% endfor %}
+        </tr>
+      </thead> 
+      <tbody>
+        <tr>
+          {% for name in stats %}
+            <td>{{ stats[name] }}</td>
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  {% endif %}
 {% endblock %}
+
+{# {% block modal %}{% include 'partials/modal.j2' %}{% endblock %}
+
+{% block modal_body %}
+  <form action='' class='container'>
+    <div class='row'>
+      <div class='form-group'>
+        
+      </div>
+    </div>
+  </form>
+{% endblock %} #}
 
 {% block scripts %}{% endblock %}
 

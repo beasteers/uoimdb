@@ -1,7 +1,7 @@
 {% extends 'base.j2' %}
 
 {% block styles %}
-  <link rel="stylesheet" href="{{ url_for('.static', filename='css/calendar.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
   <style>
     body {
       background-color: {{ config.CALENDAR_BACKGROUND_OVERLAY_COLOR }};
@@ -15,11 +15,59 @@
 {% block content %}
   <nav class='navbar'>
     <h1>{{ config.APP_TITLE }}</h1>
-    <a class="btn btn-black mt-4" href="{{ url_for('.random_sample_list') }}">View Random Samples</a>
-    <a class="btn btn-black mt-4" href="{{ url_for('.random_video') }}">Pick at Random</a>
+
+    {% if random_samples %}
+      <div class="dropdown show">
+        <a class="btn btn-black dropdown-toggle" href="#" role="button" id="selectSample" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Random Samples</a>
+
+        <div class="dropdown-menu" aria-labelledby="selectSample">
+        {% for smp_name in random_samples %}
+          <a class="dropdown-item {{ 'active' if smp_name == name }}" href="{{ url_for('random_sample_list', name=smp_name, ajax=True) }}">{{ smp_name }}</a>
+        {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <a class="btn btn-black mt-4" href="{{ url_for('random_video') }}">Pick at Random</a>
+
+  <ul  class="nav nav-pills" id='tab-nav'>
+    <li class="active"><a  href="#calendar" data-query='{{ url_for("get_calendar_data") }}' data-toggle="tab">Calendar</a></li>
+    <li class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Random Samples</a>
+      <div class="dropdown-menu">
+        {% for smp_name in random_samples %}
+          <a class="dropdown-item {{ 'active' if smp_name == name }}" 
+              href="#random-samples" data-query="{{ url_for('random_sample_list', name=smp_name, ajax=True) }}" name='{{ smp_name }}'>{{ smp_name }}</a>
+        {% endfor %}
+      </div>
+    </li>
+    <li class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Label Sets</a>
+      <div class="dropdown-menu">
+        {% for link in label_sets %}
+          <a class="dropdown-item {{ 'active' if link.name == name }}" href="{{ url_for('label_list', name=smp_name, ajax=True) }}">{{ link }}</a>
+        {% endfor %}
+      </div>
+    </li>
+
+  </ul>
   </nav>
 
-	<div id="grid"></div>
+  <div class="container">
+   {#  {% if config.SHOW_CALENDAR %}
+      <a class="btn btn-black mt-4" id='show_calendar' data-toggle="collapse" data-target="#calendar-container">Calendar</a>
+    {% endif %} #}
+
+    
+  </div>
+
+  
+
+  <div id='tab-panels'>
+    <div id='calendar'></div>
+    <div id='label-list'></div>
+    <div id='random-samples'></div>
+  </div>
+
 
   <div class="container">
     <a class="btn btn-black mt-4" href="{{ url_for('.label_list') }}">View Collected Labels</a>
@@ -28,11 +76,15 @@
 
 {% block scripts %}
 	<script>
-		var calendar = {{ calendar|tojson }};
-    	console.log(calendar);
+    
+
+    {% if not config.COLLAPSED_CALENDAR %}
+    d3.select('#show_calendar').dispatch('click');
+    {% endif %}
+    
 	</script>
 	
-	<script src="{{ url_for('.static', filename='js/calendar.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/index.js') }}"></script>
 	<script></script>
 {% endblock %}
 

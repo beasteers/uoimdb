@@ -7,13 +7,11 @@ import cv2
 import json
 import glob
 import time
-import hashlib
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from filelock import FileLock
 
-from flask import Flask, Blueprint
+from flask import Flask
 from flask import request, render_template, jsonify, make_response, send_file, url_for, redirect, flash, abort
 import flask_login
 import jinja2
@@ -22,6 +20,21 @@ import uoimdb as uo
 from .image_processing import ImageProcessor
 from uoimdb.config import get_config
 from uoimdb import utils
+
+
+
+def user_col(col, user=None):
+    '''Gets the name of a user specific column'''
+    if user is None:
+        user = flask_login.current_user.get_id() if flask_login.current_user else ''
+    return '{}|{}'.format(user, col)
+
+def remove_user_col(col):
+    '''Gets the name of a user specific column'''
+    return col.split('|')[-1]
+
+
+from uoimdb.tools.random_sample import RandomSamples
 
 
 APP_ROOT = os.path.dirname(os.path.realpath(__file__))
@@ -71,12 +84,18 @@ class TaggingApp(object):
         print('Image Database Shape: {}'.format(self.imdb.df.shape))
         print(self.imdb.df.head())
 
+        
 
-        # dataframe to store new labels in and output csv file for labels
-        if os.path.isfile(cfg.LABELS_FILE):
-            self.labels_df = pd.read_csv(cfg.LABELS_FILE).set_index('id').fillna('')
-        else:
-            self.labels_df = pd.DataFrame([], columns=['id', 'src', 'x', 'y', 'w', 'h']).set_index('id').fillna('')
+        # load all labels
+        utils.ensure_dir(self.cfg.LABELS_LOCATION)
+
+        self.labels_dfs = {}
+        for f in glob.glob(os.path.join(self.cfg.LABELS_LOCATION, '*.csv')):
+            lbl_name = os.path.splitext(os.path.basename(f))[0]
+            self.labels_dfs[lbl_name] = pd.read_csv(f).set_index('id').fillna('')
+
+        if not len(self.labels_dfs):
+            self.new_label_set_df(self.cfg.DEFAULT_LABELS_FILE)
 
 
         # performs the image processing
@@ -94,27 +113,30 @@ class TaggingApp(object):
 
 
         # load all generated random samples
-        self.random_sample_dir = os.path.join(self.cfg.DATA_LOCATION, 'random_samples')
-        utils.ensure_dir(self.random_sample_dir)
-
-        self.random_samples = {}
-        self._user_permutations = {} # stores the shuffle order for each user+sample
-        for f in glob.glob(os.path.join(self.random_sample_dir, '*.csv')):
-            self.load_random_sample(f) # loads into self.random_samples[name]
-
-        
+        self.random_samples = RandomSamples(self.imdb, self.image_processor)
+        self.random_samples.load_samples() 
 
 
     def inject_globals(self):
         return dict(config=self.cfg.frontend,
             current_user=flask_login.current_user.get_id(), 
-            filters=list(self.image_processor.filters.keys()))	
+            image_filters=list(self.image_processor.filters.keys()),
+            random_samples=list(self.random_samples.samples.keys()), 
+            label_sets=list(self.labels_dfs.keys()),)
+
+
+
+    @property
+    def current_label_set(self):
+        return request.values.get('label_set') or request.cookies.get('label_set') or self.cfg.DEFAULT_LABELS_FILE
+    	
 
 
     def define_routes(self):
         # define all of the routes
         self.authentication_routes()
         self.page_routes()
+        self.random_sample_routes()
         self.ajax_routes()
         self.image_routes()
 
@@ -189,39 +211,56 @@ class TaggingApp(object):
         '''
 
         @self.app.route('/')
-        @self.app.route('/cal/')
         @flask_login.login_required
-        def calendar():
+        def index():
             '''Page that lists all images grouped by month/day'''
-            return render_template('calendar.j2', title='Calendar', calendar=self.get_calendar())
+            return render_template('index.j2', title=self.cfg.APP_TITLE, calendar=True)
 
-        @self.app.route('/label-list/')
+        @self.app.route('/labels/')
+        @self.app.route('/labels/<name>/')
         @flask_login.login_required
-        def label_list():
+        def label_list(name=None):
             '''Page that lists all images grouped by month/day'''
-            df = self.labels_df.reset_index()
-            return render_template('table.j2', title='Collected Annotations', 
-                columns=df.columns, 
-                data=df.to_dict(orient='records'))
+            name = name or request.cookies.get('label_set') or self.cfg.DEFAULT_LABELS_FILE
+
+            if name not in self.labels_dfs:
+                return abort(404, 'This label set does not exist. Use /labels/{}/create/ to create that label set.'.format(name))
+
+            df = self.labels_dfs[name].reset_index()
+
+            stats = df.groupby('label').count().id.rename(lambda l: 'Labeled as {}'.format(l))
+            stats = stats.append(
+                    df.groupby('user').count().id.rename(lambda u: 'Labeled by {}'.format(u)))
+
+            return render_template('table.j2', title='Annotations in {}'.format(name), 
+                columns=df.columns, data=df.to_dict(orient='records'), stats=stats.to_dict(),
+                links=[
+                    {'name': name, 'url': url_for('label_list', name=name)}
+                    for name in self.labels_dfs
+                ], 
+                set_cookie_button=(dict(name='label_set', value=name, label='Set as Default') 
+                                    if name != request.cookies.get('sample_name') else None)
+                )
 
 
-        # @self.app.route('/cal/<date>/')
-        # @flask_login.login_required
-        # def timeline_day(date):
-        # 	'''Display images on a certain day'''
-        # 	timeline = self.get_timeline(date)
-        # 	prev_day, next_day = self.get_next_prev_date(date)
+        @self.app.route('/labels/<name>/create/')
+        @flask_login.login_required
+        def create_label_set(name=None):
+            '''Page that lists all images grouped by month/day'''
+            if name in self.labels_dfs and request.args.get('overwrite') is None:
+                return abort(500, 'Label set {} already exists. Add ?overwrite to overwrite the label set.'.format(name))
 
-        # 	return render_template('tagger.j2', title='{}'.format(date), 
-        # 		timeline=timeline.to_dict(orient='records'),
-        # 		prev_day=prev_day, next_day=next_day, date=date) # 
+            self.new_label_set_df(name)
+            return redirect(url_for('label_list', name=name))
+
 
 
         @self.app.route('/video/<date>/')
         @self.app.route('/video/<date>/<time_range>')
         @flask_login.login_required
-        def video_day(date, time_range=self.cfg.FILTER_TIME_RANGE):
+        def video_day(date, time_range=None):
             '''Display images on a certain day'''
+            time_range = time_range or '-'.join(map(str, self.cfg.FILTER_TIME_RANGE))
 
             return render_template('video.j2', title='{}'.format(date), 
                 query=url_for('get_images', date=date, time_range=time_range))
@@ -238,6 +277,14 @@ class TaggingApp(object):
                 query=url_for('get_images', date=date, time_range=time_range, has_labels=1)) # 
 
 
+    def new_label_set_df(self, name):
+        '''Create a new set of labels'''
+        self.labels_dfs[name] = df = pd.DataFrame([], columns=['id', 'src', 'x', 'y', 'w', 'h']).set_index('id').fillna('')
+        df.to_csv(os.path.join(self.cfg.LABELS_LOCATION, '{}.csv'.format(name)))
+
+
+
+    def random_sample_routes(self):
 
         @self.app.route('/random/all/')
         @flask_login.login_required
@@ -263,27 +310,33 @@ class TaggingApp(object):
                 <user>_not_status (str): all images without a certain status for a specific user
                 only_cached (bool): if true, only return images that have been cached
                 chronological (bool): order images by chronological order
-                per_page (int): 
+                per_page (int): override number of items per page
+                unordered (bool): don't apply any user specific ordering
                 
             '''
             if not name:
                 try:
-                    name = next(iter(self.random_samples.keys()))
+                    name = next(iter(self.random_samples.samples.keys()))
                     return redirect(url_for('random_sample_list', name=name))
                 except StopIteration:
                     return abort(404, 'Create a random sample by going to /random/<your_new_sample_name>')
 
-            if name not in self.random_samples:
+            if name not in self.random_samples.samples:
                 return abort(404, "{} doesnt exist. Create a random sample by going to /random/{}/create".format(name, name))
 
-            # select random sample from imdb
-            df = self.random_samples[name].copy()
+
+
+            # select random sample from imdb and shuffle order unique for a user.
+            if request.args.get('unordered') is None:
+                df = self.random_samples.user_sample_order(name, user)
+            else:
+                df = self.random_samples.samples[name]
+
             sample_cols = df.columns
             total_count = len(df)
-
-            # shuffle order unique for a user. add src as column and numerical index column
-            order = self._user_permutations[user_col(name, user=user)] # 
-            df = df.iloc[order].reset_index().reset_index()
+            
+            # add src as column and numerical index column
+            df = df.copy().reset_index().reset_index()
             
             # filter by status
             has_status = request.args.get('has_status')
@@ -353,18 +406,33 @@ class TaggingApp(object):
                     [c for c in sample_cols if not c.startswith(user_col(''))]]
 
 
-            return render_template('table.j2', title='Random Sample: {}'.format(name) + ('|Page {}/{}'.format(page, max_page) if per_page else ''), 
-                name=name,
-                columns=df.columns, 
+            stats = pd.Series([])
+            stats['Total in Sample'] = total_count
+            for u in self.cfg.USERS:
+                stats[user_col('reviewed', u)] = (df[user_col('status', u)] == 'reviewed').sum()
+
+
+
+            page_data = dict(
+                title='Random Sample: {}'.format(name) + ('|Page {}/{}'.format(page, max_page) if per_page else ''), 
+                name=name, columns=df.columns, stats=stats.to_dict(), 
                 data=df.to_dict(orient='records'), 
                 prev_query=url_for('random_sample_list', name=name, page=page-1, user=user) if per_page and page > 1 else None,
                 next_query=url_for('random_sample_list', name=name, page=page+1, user=user) if per_page and page < max_page else None,
+            )
+
+
+            return render_template('table.j2', 
                 links=[
                     {'name': name, 'url': url_for('random_sample_list', name=name)}
-                    for name in self.random_samples
-                ])
+                    for name in self.random_samples.samples
+                ], 
+                set_cookie_button=(dict(name='sample_name', value=name, label='Set as Default') 
+                                    if name != request.cookies.get('sample_name') else None),
+                **page_data)
 
 
+        @self.app.route('/random/create/')
         @self.app.route('/random/<name>/create/')
         @self.app.route('/random/<name>/create/<int:n>/')
         @flask_login.login_required
@@ -379,66 +447,40 @@ class TaggingApp(object):
                 overlap_ratio (float): how much of the n_samples should overlap
 
             '''
-            df = self.imdb.df
+            if not name:
+                return abort(500, 'You must specify a sample name')
 
-            # filter by time range
             time_range = request.args.get('time_range')
-            time_range = map(int, time_range.split('-')) if time_range else self.cfg.FILTER_TIME_RANGE
             if time_range:
-                morning, evening = time_range
-                if morning:
-                    df = df[df.date.dt.hour >= morning]
-                if evening:
-                    df = df[df.date.dt.hour < evening]
+                time_range = map(int, time_range.split('-'))
 
-            # dont take images close to a time gap
-            distance_to_gap = int(request.args.get('distance_to_gap', self.cfg.DISTANCE_FROM_GAP))
-            if distance_to_gap:
-                df = df[df.distance_to_gap >= distance_to_gap]
+            distance_to_gap = request.args.get('distance_to_gap')
+            if distance_to_gap is not None:
+                distance_to_gap = int(distance_to_gap)
 
-            # create sample independent of other samples
-            if request.args.get('overlap_existing') is not None:
-                for _, sample in self.random_samples.items():
-                    df = df.drop(index=sample.index, errors='ignore')
+            overlap_ratio = request.args.get('overlap_ratio')
+            if overlap_ratio is not None:
+                overlap_ratio = float(overlap_ratio)
 
-            if not len(df):
-                return abort(500, "No images available.")
+            names = self.random_samples.create_sample(name, n=n, 
+                overlap_existing=request.args.get('overlap_existing') is not None,
+                n_samples=int(request.args.get('n_samples', 0)),
+                overlap_ratio=overlap_ratio,
+                time_range=time_range,
+                distance_to_gap=distance_to_gap)
 
-            n_samples = int(request.args.get('n_samples', 0))
-            if n_samples: # create several overlapping samples
-                overlap_ratio = float(request.args.get('overlap_ratio', self.cfg.SAMPLE_OVERLAP_RATIO))
-                n_needed = int(n * (n_samples - (n_samples - 1) * overlap_ratio))
+            if not names:
+                return abort(500, 'Sample {} could not be created.'.format(name))
 
-                full_sample = df.sample(n=min(n_needed, len(df))).index
-
-                for i in range(n_samples):
-                    start = int(i * n * (1 - overlap_ratio))
-                    sample = full_sample[start:start + n]
-                    if len(sample):
-                        self.create_random_sample('{}-{}'.format(name, i+1), sample)
-
-                name = '{}-{}'.format(name, 1) # redirect to first sample
-
-
-            else: # create a single sample
-                sample = df.sample(n=min(n, len(df))).index
-                self.create_random_sample(name, sample)
-            
-
+            name = names[0]
             return redirect(url_for('random_sample_list', name=name))
+
+
 
         @self.app.route('/random/<name>/delete/')
         @flask_login.login_required
         def delete_random_sample(name):
-            for f in glob.glob(os.path.join(self.random_sample_dir, '{}.csv'.format(name))):
-
-                name = os.path.splitext(os.path.basename(f))[0]
-                if name in self.random_samples:
-                    del self.random_samples[name]
-
-                if os.path.isfile(f):
-                    os.remove(f)
-
+            random_sample.delete_sample(name)
             return redirect(url_for('random_sample_list'))
 
 
@@ -447,65 +489,19 @@ class TaggingApp(object):
         @flask_login.login_required
         def random_sample_video(name, i, user=None):
             '''Display images on a certain day'''
-            if name in self.random_samples and i < len(self.random_samples[name]):
-                src = self.random_samples[name].index[i]
-                # if not self.random_samples[name].loc[src, user_col('status')]:
-                # 	self.random_samples[name].loc[src, user_col('status')] = 'reviewed'
+            if name in self.random_samples.samples and i < len(self.random_samples.samples[name]):
+                # src = self.random_samples.samples[name].index[i]
+                # if not self.random_samples.samples[name].loc[src, user_col('status')]:
+                # 	self.random_samples.samples[name].loc[src, user_col('status')] = 'reviewed'
 
                 return render_template('video.j2', title='Random', sample_name=name,
                     query=url_for('get_images', sample_name=name, sample_index=i, sample_user=user),
                     prev_query=url_for('random_sample_video', name=name, i=i-1, sample_user=user) if i-1 >= 0 else None,
-                    next_query=url_for('random_sample_video', name=name, i=i+1, sample_user=user) if i+1 < len(self.random_samples[name]) else None,
+                    next_query=url_for('random_sample_video', name=name, i=i+1, sample_user=user) if i+1 < len(self.random_samples.samples[name]) else None,
                     parent_page=url_for('random_sample_list', name=name))
             else:
                 return abort(404)
-
         
-    def create_random_sample(self, name, sample):
-        filename = os.path.join(self.random_sample_dir, '{}.csv'.format(name))
-
-        # I know this isn't the most efficient way, but I'm creating user cols in load_..
-        pd.DataFrame(columns=[], index=sample).to_csv(filename) 
-        self.load_random_sample(filename)
-        
-
-
-    def load_random_sample(self, filename):
-        df = pd.read_csv(filename, index_col='src').fillna('')
-
-        name = os.path.splitext(os.path.basename(filename))[0]
-
-        for user in self.cfg.USERS:
-            # create columns that don't exist. resilient to new users
-            col = user_col('status', user)
-            if not col in df.columns:
-                df[col] = ''
-
-            # create sample shuffle order for all users		
-            perm_id = user_col(name, user)
-            seed = int(hashlib.md5(perm_id.encode('utf-8')).hexdigest(), 16) % (2**32 - 1)
-            self._user_permutations[perm_id] = np.random.RandomState(seed=seed).permutation(len(df))
-
-        self.random_samples[name] = df
-
-
-    def save_user_random_sample(self, name):
-        filename = os.path.join(self.random_sample_dir, '{}.csv'.format(name))
-        my_sample = self.random_samples[name]
-
-        with FileLock(filename + '.lock', timeout=3): # handle concurrent access
-            # load existing sample
-            sample = pd.read_csv(filename, index_col='src')
-
-            # update all user columns
-            for col in my_sample.columns: 
-                if col.startswith(user_col('')):
-                    sample[col] = my_sample[col]
-
-            sample.to_csv(filename)
-
-
-
 
     def ajax_routes(self):
         '''
@@ -522,11 +518,14 @@ class TaggingApp(object):
         def save():
             '''Post the bounding boxes to save'''
             # requests don't like nested request bodies for some reason, so data is double encoded
-            nlabels_prev = len(self.labels_df)
+            lbl_name = self.current_label_set
+            labels = self.labels_dfs[lbl_name]
+            nlabels_prev = len(labels)
+
             boxes = request.form.get('boxes')
             if boxes:
                 self.add_labels(json.loads(boxes))
-                self.labels_df.to_csv(self.cfg.LABELS_FILE)
+                self.labels_dfs[lbl_name].to_csv(os.path.join(self.cfg.LABELS_LOCATION, '{}.csv'.format(lbl_name)))
 
             # save if image has been seen
             name = request.form.get('sample_name')
@@ -535,35 +534,11 @@ class TaggingApp(object):
                 img_meta = json.loads(img_meta)
                 for src, meta in img_meta.items():
                     if 'status' in meta:
-                        self.random_samples[name].loc[src, user_col('status')] = meta['status']
+                        self.random_samples.samples[name].loc[src, user_col('status')] = meta['status']
 
-                self.save_user_random_sample(name)
+                self.random_samples.save_user_sample(name)
 
-            return jsonify({'message': 'Saved! &#128077;', 'nlabels': len(self.labels_df), 'nlabels_prev': nlabels_prev})
-
-        # @self.app.route('/save/meta/', methods=['POST'])
-        # @flask_login.login_required
-        # def save_meta():
-        # 	'''Save image meta (i.e. image view counts)'''
-        # 	# self.imdb.save_meta()
-
-        # 	return jsonify({'message': 'Saved metadata!'})
-
-
-        @self.app.route('/select-images/')
-        @flask_login.login_required
-        def select_images():
-            '''select a new group of images. get bounding boxes'''
-            srcs = json.loads(request.args.get('srcs', "[]"))
-
-            df = self.imdb.df[self.imdb.df.index.isin(srcs)].drop('im', 1).reset_index()
-            df['boxes'] = df.index.map(lambda src: 
-                (self.labels_df[self.labels_df['src'] == src]
-                            .reset_index()
-                            .fillna('')
-                            .to_dict(orient='records')))
-
-            return jsonify(df.to_dict(orient='records') if len(df) else [])
+            return jsonify({'message': 'Saved! &#128077;', 'nlabels': len(labels), 'nlabels_prev': nlabels_prev})
 
 
         @self.app.route('/clear-images')
@@ -595,20 +570,19 @@ class TaggingApp(object):
 
             sample_name = request.args.get('sample_name')
             sample_index = request.args.get('sample_index')
-#             sample_user = request.args.get('sample_user')
+            # sample_user = request.args.get('sample_user')
+            print(request.args)
 
             # start with all images and filter based on request
             df = self.imdb.df.drop('im', 1)
 
             i_center = None
             if sample_name:
-                sample = self.random_samples[sample_name]
-                order = self._user_permutations[user_col(sample_name, user=request.args.get('sample_user'))] # 
-                sample = sample.iloc[order]
+                sample = self.random_samples.user_sample_order(sample_name, user=request.args.get('sample_user'))
+
                 if sample_index is None:
                     sample_index = np.where(sample[user_col('status')] != 'reviewed')[0]
-                else:
-                    sample_index = int(sample_index)
+                sample_index = int(sample_index)
                 src = sample.index[sample_index]
 
             if src:
@@ -632,10 +606,11 @@ class TaggingApp(object):
                     if evening:
                         df = df[df.date.dt.hour < int(evening)]	
 
+                labels = self.labels_dfs[self.current_label_set]
                 if has_labels == '1':
-                    df = df[df.index.isin(self.labels_df.src)]
+                    df = df[df.index.isin(labels.src)]
                 elif has_labels == '0':
-                    df = df[~df.index.isin(self.labels_df.src)]
+                    df = df[~df.index.isin(labels.src)]
 
                 if random:
                     i = np.random.randint(lwindow, len(df) - rwindow) # get random row constrained by window.
@@ -685,6 +660,26 @@ class TaggingApp(object):
                 i_focus=i_center))
 
 
+        @self.app.route('/calendar-data')
+        @flask_login.login_required
+        def get_calendar_data():
+            labels = self.labels_dfs[self.current_label_set]
+
+            df = self.imdb.df.reset_index().set_index('date')
+            df = df.groupby(pd.Grouper(freq='M')
+                ).apply(lambda month: month.groupby(month.index.day
+                    ).apply(lambda day: pd.Series(dict(
+                            image_count=len(day),
+                            label_count=sum(labels.src.isin(day.src)),
+                            #view_count=sum(day.views > 0),
+                            date=day.index[0].strftime(self.cfg.DATE_FORMAT)
+                        )).to_dict()
+                    ).to_dict()
+                )
+            df = df[df.apply(len) > 0]
+            df.index = df.index.strftime('%Y/%m')
+            return jsonify(df.to_dict())
+
 
     def image_routes(self):
         '''
@@ -697,22 +692,22 @@ class TaggingApp(object):
         @self.app.route('/filter/<filter>/<path:filename>')
         @flask_login.login_required
         def filtered_image(filter, filename):
-#             t = time.time()
+            # t = time.time()
             cache_filename = self.image_processor.cache_filename(filename, filter)
 
             if os.path.isfile(cache_filename):
                 img = cv2.imread(cache_filename, -1)
                 assert img is not None
-#                 print('loaded cache', time.time() - t)
+                # print('loaded cache', time.time() - t)
             else:
                 img = self.image_processor.process_image(filename, filter)
                 assert img is not None
-#                 print('processed', time.time() - t)
+                # print('processed', time.time() - t)
                 if request.args.get('cache_result'):
                     cv2.imwrite(cache_filename, img)
 
             img = self.image_processor.pre_render_processing(img)
-#             print(img.shape, 'total time', time.time() - t)
+            # print(img.shape, 'total time', time.time() - t)
             return image_response(img)
 
         @self.app.route('/random-image')
@@ -737,7 +732,8 @@ class TaggingApp(object):
     '''
 
     def get_boxes_for_imgs(self, df):
-        labels = self.labels_df[self.labels_df.src.isin(df.index)]
+        labels = self.labels_dfs[self.current_label_set]
+        labels = labels[labels.src.isin(df.index)]
 
         if len(labels):
             df['boxes'] = labels.reset_index().groupby('src').apply(lambda s: s.to_dict(orient='records')).rename('boxes')
@@ -749,35 +745,19 @@ class TaggingApp(object):
         return df
 
 
-    def get_calendar(self):
-        '''gets image stats first by month/year then by day'''
-        df = self.imdb.df.reset_index().set_index('date')
-        df = df.groupby(pd.Grouper(freq='M')
-        ).apply(lambda month: month.groupby(month.index.day
-            ).apply(lambda day: pd.Series(dict(
-                    image_count=len(day),
-                    label_count=sum(self.labels_df.src.isin(day.src)),
-                    #view_count=sum(day.views > 0),
-                    date=day.index[0].strftime(self.cfg.DATE_FORMAT)
-                )).to_dict()
-            ).to_dict()
-        )
-        df = df[df.apply(len) > 0]
-        df.index = df.index.strftime('%Y/%m')
-        return df.to_dict()
-
-
     def get_timeline(self, date, freq=None, imgs_per_group=100):
         day_df = self.imdb.df[self.imdb.df.date.dt.strftime(self.cfg.DATE_FORMAT) == date].reset_index()
         
         if freq is None:
             freq = '{}s'.format(int(min(1. * imgs_per_group / len(day_df), 1) * 24*60*60)) #'6h'
 
+        labels = self.labels_dfs[self.current_label_set]
+
         timeline = day_df.groupby(pd.Grouper(key='date', freq=freq)
         ).apply(lambda imgs: pd.Series(dict(
             image_count=len(imgs),
             #boxes=imgs.merge(labels_df, on='src').to_dict(orient='records'),
-            label_count=sum(self.labels_df.src.isin(imgs.src)),
+            label_count=sum(labels.src.isin(imgs.src)),
             srcs=imgs['src'].tolist()
         ))).reset_index()
 
@@ -786,16 +766,16 @@ class TaggingApp(object):
         #timeline['label_count'] = timeline.boxes.apply(lambda boxes: len(boxes))
         return timeline
 
+
     def get_next_prev_date(self, date):
         '''Gets the previous/next dates that are available with images'''
         i = self.dates_list.index(date)
-        return (
-            self.dates_list[i - 1] if i > 0 else None,
-            self.dates_list[i + 1] if i >= 0 and i < len(self.dates_list)-1 else None
-        )
+        prev_date = self.dates_list[i - 1] if i > 0 else None,
+        next_date = self.dates_list[i + 1] if i >= 0 and i < len(self.dates_list)-1 else None
+        return prev_date, next_date
 
 
-    def add_labels(self, new_labels):
+    def add_labels(self, new_labels, name=None):
         '''add new records of labels to table.
         Arguments:
             new_labels (list of dicts): each dict containing labels_df columns representing one bounding box
@@ -803,27 +783,19 @@ class TaggingApp(object):
         if not len(new_labels):
             return
 
+        name = name or self.current_label_set
+
         df = pd.DataFrame.from_dict(new_labels).set_index('id')
         df['user'] = flask_login.current_user.get_id()
-        self.labels_df = df.combine_first(self.labels_df).fillna('') # merge
-        self.labels_df = self.labels_df[self.labels_df['src'] != False] # remove deleted boxes
+
+        df = df.combine_first(self.labels_dfs[name]).fillna('') # merge
+        self.labels_dfs[name] = df[df['src'] != False] # remove deleted boxes
 
 
     def run(self, **kw):
         kw = kw or self.cfg.APP_RUN
         self.app.run(**kw)
 
-
-
-
-def user_col(col, user=None):
-    '''Gets the name of a user specific column'''
-    user = user or flask_login.current_user.get_id()
-    return '{}|{}'.format(user, col)
-
-def remove_user_col(col):
-    '''Gets the name of a user specific column'''
-    return col.split('|')[-1]
 
 def image_response(output_img, ext='.jpg'):
     '''Converts opencv image to a flask response.'''

@@ -1,12 +1,12 @@
-body, .background {
-	background: no-repeat center center fixed; 
+.background {
+	background-repeat: no-repeat;
+	background-position: center;
+	background-attachment: fixed;
 	-webkit-background-size: cover;
 	-moz-background-size: cover;
 	-o-background-size: cover;
 	background-size: cover;
-}
 
-body {
 	background-color: #4f0d71;
 	background-blend-mode: multiply;
 

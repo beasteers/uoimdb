@@ -1,11 +1,34 @@
 var gridSizes = [1, 2, 3, 4, 6, 12];
 
-var container = d3.select('#grid')
+var container = d3.select('#calendar')
 	.append('div').attr('class', 'container');
 
 
-// draw the images i.e. start everything
-drawCalendar(calendar);
+
+// d3.select('#show_calendar').on('click', function(e){ 
+//   if(d3.select('#calendar .container > *').empty()){ 
+//     d3.event.stopPropagation();
+//     var $collapse = $($(this).data('target'));
+
+//     $.get("{{ url_for('get_calendar_data') }}", function(calendar){
+//       drawCalendar(calendar);
+//       $collapse.collapse('show');
+//     })
+//   } 
+// });
+
+
+// $('#tab-nav').on('click', 'nav-item', function() {
+// 	var data = $(this).data();
+// 	if(data.query) {
+// 		d3.event.stopPropagation();
+// 		$.get("{{ url_for('get_calendar_data') }}", function(calendar){
+// 	      drawCalendar(calendar);
+// 	      $collapse.collapse('show');
+// 	    });
+// 	}
+// })
+
 
 
 function drawCalendar(calendar) {
@@ -42,6 +65,14 @@ function drawCalendar(calendar) {
 	// add on column sizes
 	changeRowCount(1);
 }
+
+
+
+
+
+
+
+
 
 function changeRowCount(i){
 	// var i = parseInt(this.value);

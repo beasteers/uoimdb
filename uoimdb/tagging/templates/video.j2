@@ -17,6 +17,8 @@
 {% block actions %}
   <span id='expand-nav' title='More Options'><i class="fas fa-sliders-h"></i></span>
 
+  <span id='save' title='Save your Work'><i class="fas fa-save"></i></span>
+
   <span id='rewind' title='Jump Backwards'><i class="fas fa-backward"></i></span>
   <span id='step-back' title='Step Backwards'><i class="fas fa-caret-left"></i></span>
 
@@ -28,11 +30,16 @@
   <span id='toggle-original' title='Toggle Original'><i class="fas fa-image"></i></span>
 
   <span id='mark-unreviewed' title='Mark Unreviewed'>
-    <span class="fa-layers fa-fw">
+    <i class="fas fa-exclamation"></i>
+    {# <span class="fa-layers fa-fw">
       <i class="far fa-square"></i>
       <i class="fas fa-exclamation" data-fa-transform="shrink-6"></i>
-    </span>
+    </span> #}
   </span>
+
+
+
+  <select class="image_filter"></select>
 {% endblock %}
 
 
@@ -41,11 +48,11 @@
     <label for="videoSpeed">Video Speed</label>
     <input class='form-control mx-2' type="range" min="{{ config.SPEED.MIN }}" max="{{ config.SPEED.MAX }}" step="{{ config.SPEED.STEP }}" value='{{ config.SPEED.DEFAULT }}' style='direction: rtl' id="videoSpeed">
   </div>
-  <div class='form-group'>
-    <label for="imgFilter">Image Filter</label>
-    <select class='form-control custom-select custom-select-sm mx-2' id="imgFilter"></select>
-  </div>
-  <button class="btn btn-success my-sm-0 mx-2" id='save' type='button'>Save</button>
+  {# <div class='form-group'>
+    <label for="image_filter">Image Filter</label>
+    <select class='form-control custom-select custom-select-sm mx-2' id="image_filter"></select>
+  </div> #}
+  {# <button class="btn btn-success my-sm-0 mx-2" id='save' type='button'>Save</button> #}
 {% endblock %}
 
 
@@ -61,15 +68,19 @@
 
 {% block scripts %}
 	<script>
-		var img_filters = {{ filters|tojson }};
+		var img_filters = {{ image_filters|tojson }};
     var query = '{{ query }}';
     var sample_name = '{{ sample_name }}';
 	</script>
 	
-	<script src="{{ url_for('.static', filename='js/main.js') }}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/css-element-queries/1.0.2/ResizeSensor.min.js"></script>
+	{# <script src="{{ url_for('.static', filename='js/main.js') }}"></script> #}
+  <script src="{{ url_for('.static', filename='js/box.js') }}"></script>
   <script src="{{ url_for('.static', filename='js/video.js') }}"></script>
 	<script>
-    loadImagesFromQuery(query);
+   var grid = d3.select('#grid');
+    app = new ImageLabelerApp(grid);
+    app.loadImagesFromQuery(query); 
   </script>
 {% endblock %}
 

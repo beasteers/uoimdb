@@ -80,3 +80,10 @@ class ImageProcessor(object):
         filename = '{},{}'.format(filter.replace('/', ','), self.imdb.src_to_idx(filename))
         return os.path.realpath(os.path.join(self.imdb.cfg.IMAGE_CACHE_LOCATION, filename))
 
+    def inverse_cache_filename(self, filename, ext='png'):
+        '''Reverse of ImageProcessor.cache_filename(). 
+            NOTE... This is hard-coded to our specific format. Need to generalize this later. '''
+        filename = os.path.basename(filename)
+        filter, idx = filename.split(',', 1)
+        src = os.path.splitext(self.imdb.idx_to_src(idx))[0] + '.' + ext
+        return src

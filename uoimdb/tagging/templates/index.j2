@@ -1,0 +1,138 @@
+{% extends 'base.j2' %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('.static', filename='css/index.css') }}">
+  <style>
+    .background {
+      background-color: {{ config.CALENDAR_BACKGROUND_OVERLAY_COLOR }};
+      background-image: url({{ config.BASE_URL }}random-image);
+    }
+  </style>
+{% endblock %}
+
+{% block nav %}{% endblock %}
+
+{% block content %}
+  <nav class='navbar'>
+    <h1>{{ config.APP_TITLE }}</h1>
+    {% if random_samples %}
+      <div class="dropdown show">
+        <a class="btn btn-black" href="{{ url_for('random_sample_list') }}" role="button" id="selectSample">Random Samples</a>
+        <button type="button" class="btn btn-black dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <span class="sr-only">Toggle Dropdown</span>
+      </button>
+
+        <div class="dropdown-menu" aria-labelledby="selectSample">
+        {% for smp_name in random_samples %}
+          <a class="dropdown-item {{ 'active' if smp_name == name }}" href="{{ url_for('random_sample_list', name=smp_name) }}">{{ smp_name }}</a>
+        {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if label_sets %}
+      <div class="dropdown show">
+        <a class="btn btn-black" href="{{ url_for('label_list') }}" role="button" id="selectSample">Label Sets</a>
+        <button type="button" class="btn btn-black dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <span class="sr-only">Toggle Dropdown</span>
+        </button>
+
+        <div class="dropdown-menu" aria-labelledby="selectSample">
+        {% for smp_name in label_sets %}
+          <a class="dropdown-item {{ 'active' if smp_name == name }}" href="{{ url_for('label_list', name=smp_name) }}">{{ smp_name }}</a>
+        {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    {# <a class="btn btn-black mt-4" href="{{ url_for('.random_video') }}">Pick at Random</a> #}
+  </nav>
+
+  {# <div class='container'>
+    <ul class="nav nav-tabs">
+      {% if calendar %}
+        <li><a data-toggle="tab" href="#calendar-tab">Calendar</a></li>
+      {% endif %}
+      <li><a data-toggle="tab" href="#menu2">Menu 2</a></li>
+      <li><a data-toggle="tab" href="#menu3">Menu 3</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="calendar-tab" class="tab-pane fade">
+        <div id="calendar"></div>
+      </div>
+
+      <div id="menu2" class="tab-pane fade">
+        <h3>Menu 2</h3>
+        <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam.</p>
+      </div>
+      <div id="menu3" class="tab-pane fade">
+        <h3>Menu 3</h3>
+        <p>Eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+      </div>
+    </div>
+  </div> #}
+  
+	<div id="calendar"></div>
+
+
+  <hr />
+
+  <div class='container'>
+    <h2>Current Settings</h2>
+    <div class='row'>
+
+      <div class='col-sm-4 col-md-3'>
+        <h6>Default Random Sample <a href="{{ url_for('random_sample_list') }}">Go</a></h6>
+        <select class='form-control custom-select custom-select-sm mx-2 set-cookie' name='sample_name'>
+          {% for smp_name in random_samples %}
+            <option value='{{ smp_name }}' {{ 'selected' if smp_name == request.cookies.get('sample_name')|replace('%20', ' ') }}>{{ smp_name }}</a>
+          {% endfor %}
+        </select>
+
+      </div>
+      <div class='col-sm-4 col-md-3'>
+        <h6>Current Label Set <a href="{{ url_for('label_list') }}">Go</a></h6>
+        <select class='form-control custom-select custom-select-sm mx-2 set-cookie' name='label_set'>
+          {% for lbl_name in label_sets %}
+            <option value='{{ lbl_name }}' {{ 'selected' if lbl_name == request.cookies.get('label_set')|replace('%20', ' ') }}>{{ lbl_name }}</a>
+          {% endfor %}
+        </select>
+      </div>
+      <div class='col-sm-4 col-md-3'>
+        <h6>Default Image Filter</h6>
+        <select class='form-control custom-select custom-select-sm mx-2 set-cookie' name='image_filter'>
+          {% for flt_name in image_filters %}
+            <option value='{{ flt_name }}' {{ 'selected' if flt_name == request.cookies.get('image_filter')|replace('%20', ' ') }}>{{ flt_name }}</a>
+          {% endfor %}
+        </select>
+      </div>
+      <div class='col-sm-4 col-md-3'></div>
+    </div>
+  </div>
+  
+{% endblock %}
+
+{% block scripts %}
+	<script>
+    
+    {# Started thinking about setting up more views on the index page #}
+    {% if calendar == true %}
+      $.get("{{ url_for('get_calendar_data') }}", function(calendar){
+        drawCalendar(calendar);
+      });
+    {% elif calendar == false %}
+      $('.nav-tabs a[href=#calendar-tab]').one('click', function() {
+        $.get("{{ url_for('get_calendar_data') }}", function(calendar){
+          drawCalendar(calendar);
+        });
+      })
+    {% elif calendar %}
+      drawCalendar({{ calendar|tojson }});
+    {% endif %}
+    
+	</script>
+	
+	<script src="{{ url_for('.static', filename='js/index.js') }}"></script>
+	<script></script>
+{% endblock %}
+
