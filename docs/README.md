@@ -6,7 +6,7 @@ The package also features the image processing pipelines used for performing the
 
 To install: 
 ```
-pip install git+https://github.com/bensteers/uoimdb.git # only python 3
+pip install git+https://github.com/beasteers/uoimdb.git # only python 3
 ```
 
 This documentation contains information on:
@@ -19,7 +19,7 @@ This documentation contains information on:
 This package contains two major parts: the image labeling app and the underlying image processing pipelines.
 
 ### The App
-The images are grouped into days and months and displayed in a calendar-like view.
+The images are grouped into days and months and displayed in a calendar-like view. (I don't know why this looks so crooked, it's not like I have `transform: rotate(0, 5%)` or anything.....)
 
 ![Calendar View](https://github.com/bensteers/uoimdb/raw/master/docs/assets/calendar_demo.gif)
 
